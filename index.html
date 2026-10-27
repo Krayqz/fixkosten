@@ -179,6 +179,7 @@ th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color:
 #app { display: contents; }
 .top-right { display: flex; align-items: center; gap: 12px; }
 .btn.small { min-height: 32px; padding: 4px 12px; font-size: .85rem; }
+#reloadBtn { font-size: 1.05rem; padding: 4px 10px; }
 input[type="email"], input[type="password"] {
   display: block; width: 100%; min-width: 0; min-height: 42px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
@@ -204,6 +205,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     <h1>Fixkosten-Rechner</h1>
     <div class="top-right">
       <div class="status" id="status" data-s="busy" role="status">Lädt …</div>
+      <button class="btn ghost small" type="button" id="reloadBtn" aria-label="Seite neu laden" title="Neu laden">↻</button>
       <button class="btn ghost small" type="button" id="logoutBtn" hidden>Abmelden</button>
     </div>
   </div>
@@ -903,6 +905,14 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     setStatus("busy", "Lädt …");
     loadRemote();
   }
+
+  // --- reload (the home-screen app has no browser bar) ---
+  $("reloadBtn").addEventListener("click", async () => {
+    $("reloadBtn").disabled = true;
+    if (saveTimer) { clearTimeout(saveTimer); await save(); }
+    location.replace(location.pathname + "?v=" + Date.now());
+  });
+  if (location.search.includes("v=")) history.replaceState(null, "", location.pathname + location.hash);
 
   // --- boot ---
   render();
