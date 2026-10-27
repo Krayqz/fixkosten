@@ -292,6 +292,9 @@ th, td { border-bottom-color: var(--line); }
 .today-card { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; border: 1px solid var(--accent-soft); }
 .today-card small { color: var(--muted); font-size: .8rem; display: block; }
 .today-card p { font-size: .88rem; }
+.forecast { border-top: 1px solid var(--line); padding-top: 10px; color: var(--ink); }
+.forecast b { color: var(--accent); }
+.forecast.bad b { color: var(--bad); }
 .today-card > .btn { justify-self: start; }
 .today-top { display: flex; justify-content: space-between; align-items: center; }
 .today-top b { font-size: 1.7rem; font-weight: 800; color: var(--good); letter-spacing: -.02em; }
@@ -1158,6 +1161,17 @@ body.is-locked .wrap { visibility: hidden; }
     return { budget, left: budget - spentToday, spentToday };
   }
 
+  // "if you keep spending like so far": daily average since the last wage, carried on until the next one
+  function forecast(t) {
+    if (!state.payday || !t.income) return null;
+    const w = periodWindow(), start = isoDay(w.start), now = new Date();
+    const daysGone = Math.max(1, Math.ceil((now - w.start) / 86400000));
+    if (daysGone < 3) return { early: true };
+    const spent = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) >= start && payDay(e) <= today()), e => e.amount);
+    const perDay = spent / daysGone, days = nextPayday(state.payday).days;
+    return { perDay, days, left: t.avail - perDay * days };
+  }
+
   // warnings the person asked for: below their own limit, or over today's budget
   function warnings(t) {
     const out = [];
@@ -1486,7 +1500,16 @@ body.is-locked .wrap { visibility: hidden; }
     el.innerHTML = `<div class="today-card${left < 0 || budget <= 0 ? " over" : ""}">
       <div class="today-top"><div><small>Heute kannst du noch ausgeben</small><b class="num">${fmt(Math.max(left, 0))}</b></div><span class="today-ico" aria-hidden="true">☀️</span></div>
       <div class="meter" role="img" aria-label="${Math.round(used * 100)} % vom Tagesbudget verbraucht"><span style="width:${used * 100}%"></span></div>
-      <p class="hint">${note}</p></div>`;
+      <p class="hint">${note}</p>${forecastLine(t)}</div>`;
+  }
+  function forecastLine(t) {
+    const f = forecast(t);
+    if (!f) return "";
+    if (f.early) return `<p class="forecast"><span aria-hidden="true">🔮</span> Prognose bis zum Lohn: Ab dem 3. Tag nach dem Lohn siehst du hier, wie viel am Ende voraussichtlich übrig bleibt.</p>`;
+    const avg = `im Schnitt ${fmt(f.perDay)} am Tag`;
+    return f.left >= 0
+      ? `<p class="forecast"><span aria-hidden="true">🔮</span> Wenn du so weitermachst wie bisher (${avg}), bleiben dir am Lohntag etwa <b class="num">${fmt(f.left)}</b>.</p>`
+      : `<p class="forecast bad"><span aria-hidden="true">🔮</span> Wenn du so weitermachst wie bisher (${avg}), fehlen dir am Lohntag etwa <b class="num">${fmt(-f.left)}</b>. Versuch, unter ${fmt(Math.max(t.avail, 0) / Math.max(f.days, 1))} am Tag zu bleiben.</p>`;
   }
 
   function renderStats(t) {
@@ -2028,6 +2051,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich.", "spaeter"],
     ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein.", "korrigieren"],
     ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen.", "uebersicht"],
+    ["🔮", "Prognose bis zum Lohn", "home", "prognose vorhersage weitermachen lohntag ende monat schnitt", "In der Karte „Heute kannst du noch ausgeben“ steht unten, wie viel dir am Lohntag voraussichtlich bleibt, wenn du so weiter ausgibst wie seit dem letzten Lohn (Durchschnitt pro Tag). Fixkosten sind schon abgezogen. Ab dem 3. Tag nach dem Lohn wird es angezeigt."],
     ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin.", "uebersicht"],
     ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen.", "ausgabe"],
     ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt.", "einzahlung"],
