@@ -5,48 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fixkosten-Rechner</title>
 <meta name="description" content="Einkommen, Fixkosten und Ausgaben im Blick: was bis zum nächsten Lohn übrig bleibt.">
-<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#11161c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0a0d0c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Fixkosten">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
 html { -webkit-text-size-adjust: 100%; }
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
 [hidden] { display: none !important; }
-/* Layout: the available money first, then the day-to-day ledger beside income, the fixed-cost ledger, and history plus backup at the end. One column on phones. */
+/* Layout: one dark column — the ring with the available money first, then the day-to-day entries, fixed costs, income, history and backup. */
 :root {
-  --bg: #eef1f4;
-  --surface: #ffffff;
-  --ink: #18212b;
-  --muted: #5d6976;
-  --line: #d7dde3;
-  --accent: #1f5fd1;
-  --accent-soft: #e3ecfb;
-  --good: #1a7f4e;
-  --bad: #c0362c;
-  --c1: #1f5fd1; --c2: #1a7f4e; --c3: #b8641a; --c4: #8a4fc4; --c5: #c0362c; --c6: #127a8a; --c7: #6b7480; --c8: #a68a12;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #98a4b0; --line: #2c3540;
-  --accent: #6b9dff; --accent-soft: #1e2c45; --good: #4fc58a; --bad: #ff7a6e;
-  --c1: #6b9dff; --c2: #4fc58a; --c3: #e8a25c; --c4: #b98af0; --c5: #ff7a6e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #d9c04a;
-  color-scheme: dark;
-} }
-:root[data-theme="dark"] {
-  --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #98a4b0; --line: #2c3540;
-  --accent: #6b9dff; --accent-soft: #1e2c45; --good: #4fc58a; --bad: #ff7a6e;
-  --c1: #6b9dff; --c2: #4fc58a; --c3: #e8a25c; --c4: #b98af0; --c5: #ff7a6e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #d9c04a;
+  --bg: #0a0d0c;
+  --surface: #141a17;
+  --surface-2: #1c2420;
+  --ink: #eef3f0;
+  --muted: #7d8a84;
+  --line: #222b26;
+  --accent: #3ddc84;
+  --accent-ink: #06120b;
+  --accent-soft: #17251d;
+  --good: #3ddc84;
+  --bad: #ff6b5e;
+  --spent: #ff9f43;
+  --ring-base: #2e3a35;
+  --c1: #4da3ff; --c2: #3ddc84; --c3: #ffb35c; --c4: #c084fc; --c5: #ff6b5e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #e2c84a;
+  --display: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --mono: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -195,16 +187,113 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
 .auth-msg { font-size: .9rem; min-height: 1.2em; }
 .auth-msg.err { color: var(--bad); }
 .auth-msg.ok { color: var(--good); }
-@media (prefers-reduced-motion: no-preference) { .bar span { transition: width .3s ease; } }
+
+/* --- dark design with the ring --- */
+body { font-size: 15px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 560px; gap: 16px; padding-top: 12px; }
+.num { font-family: var(--body); font-variant-numeric: tabular-nums; }
+h1 { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+.label { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .82rem; }
+.cols { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.panel { background: transparent; border: 0; padding: 4px 2px; gap: 12px; }
+.hero { background: transparent; border: 0; padding: 0; gap: 14px; }
+.ring-wrap { position: relative; width: min(270px, 74vw); aspect-ratio: 1; margin: 6px auto 0; }
+.ring { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.ring circle { transition: stroke-dasharray .4s ease, stroke-dashoffset .4s ease; }
+.ring-mid { position: absolute; inset: 8%; display: grid; place-content: center; text-align: center; gap: 4px; }
+.ring-mid .label { color: var(--muted); }
+.rest { color: var(--good); font-weight: 800; font-size: clamp(1.8rem, 10vw, 2.7rem); letter-spacing: -.03em; font-family: var(--display); white-space: nowrap; }
+.rest.neg { color: var(--bad); }
+.perday { font-size: .9rem; color: #9fb0a8; text-align: center; margin-top: -4px; }
+.perday:empty { display: none; }
+.top { flex-wrap: nowrap; }
+.top-left { display: grid; gap: 0; min-width: 0; }
+.top-left h1 { font-size: 1.35rem; font-weight: 800; }
+.top-right { flex: none; gap: 8px; }
+.perday b { font-family: var(--body); font-weight: 600; color: var(--ink); }
+.ring-keys { display: flex; justify-content: center; gap: 16px; font-size: .78rem; color: var(--muted); }
+.ring-keys:empty { display: none; }
+.ring-keys i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.hero-figure { justify-items: center; text-align: center; }
+.hero-figure .linklike { justify-self: center; color: var(--muted); font-size: .85rem; text-decoration: underline; text-underline-offset: 3px; }
+#fixForm { max-width: 100%; width: 100%; text-align: left; margin-top: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.stat small { display: block; color: var(--muted); font-size: .72rem; }
+.stat b { font-size: .95rem; font-weight: 700; white-space: nowrap; }
+.stat b.spent { color: var(--spent); }
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quick .btn { min-height: 50px; border-radius: 14px; font-size: 1rem; font-weight: 700; }
+.calc { background: var(--surface); border-radius: 14px; padding: 4px 14px; }
+.calc summary { cursor: pointer; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+.calc .equation { padding: 4px 0 12px; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; }
+.chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.chips:empty { display: none; }
+.chip { background: var(--surface); border-radius: 16px; padding: 12px; border-top: 3px solid; color: var(--ink); text-decoration: none; min-width: 0; }
+.chip-ico { font-size: 1.25rem; display: block; }
+.chip small { display: block; color: var(--muted); font-size: .76rem; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip b { font-size: .98rem; font-weight: 700; }
+.saving-line { border-top: 0; padding-top: 0; color: var(--muted); font-size: .85rem; }
+.saving-line b { font-family: var(--body); font-weight: 600; }
+
+.btn { background: var(--accent); color: var(--accent-ink); border-radius: 12px; min-height: 46px; font-weight: 700; }
+.btn.dark { background: var(--surface-2); color: var(--ink); }
+.btn.ghost { background: var(--surface-2); color: var(--ink); border: 0; }
+.btn.outline { background: transparent; color: var(--good); border: 1.5px solid var(--good); }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.good { background: var(--good); color: var(--accent-ink); }
+.btn.small { min-height: 32px; border-radius: 10px; }
+#reloadBtn, #logoutBtn { background: var(--surface); color: var(--muted); }
+.btn:focus-visible, .icon:focus-visible, .seg button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="password"], select, .money {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); min-height: 44px;
+}
+.money input { font-family: var(--body); font-variant-numeric: tabular-nums; }
+.formbox { background: var(--surface); border-radius: 16px; padding: 12px; }
+.seg { background: var(--bg); border: 0; border-radius: 12px; }
+.seg button { border-radius: 9px; }
+.seg button[aria-pressed="true"][data-kind="out"] { background: var(--bad); color: #fff; }
+.seg button[aria-pressed="true"][data-kind="in"] { background: var(--good); color: var(--accent-ink); }
+.seg button[aria-pressed="true"][data-mode] { background: var(--accent); color: var(--accent-ink); }
+.sign { background: var(--bg); color: var(--good); border-color: var(--line); }
+.sign[aria-pressed="true"] { color: #fff; }
+
+.item { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.item.spend { grid-template-columns: minmax(0, 1fr) auto auto; }
+.item .name .meta { display: block; }
+.item .num { font-weight: 600; }
+.icon { color: var(--muted); }
+.icon:hover { background: var(--surface); }
+#ledger { display: grid; gap: 10px; }
+.group { background: var(--surface); border-radius: 16px; padding: 4px 14px 6px; }
+.group-head { border-bottom: 1px solid var(--line); padding: 10px 0 8px; }
+.group .item:last-child { border-bottom: 0; }
+.total-line { padding: 6px 2px 0; }
+.pill { background: var(--accent-soft); color: var(--good); }
+.foot { display: grid; gap: 10px; }
+.foot #resetBtn { width: 100%; min-height: 52px; font-size: 1rem; }
+.foot .hint:empty { display: none; }
+.confirm, .notice { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.empty { border-color: var(--line); border-radius: 14px; }
+.income-total { border-top-color: var(--line); }
+th, td { border-bottom-color: var(--line); }
+.status::before { background: var(--muted); }
+.auth .panel { background: var(--surface); border-radius: 18px; padding: 20px; }
+@media (min-width: 821px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .ring circle { transition: none; } }
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <div class="top">
-    <h1>Fixkosten-Rechner</h1>
-    <div class="top-right">
+    <div class="top-left">
+      <h1>Fixkosten</h1>
       <div class="status" id="status" data-s="busy" role="status">Lädt …</div>
+    </div>
+    <div class="top-right">
       <button class="btn ghost small" type="button" id="reloadBtn" aria-label="Seite neu laden" title="Neu laden">↻</button>
       <button class="btn ghost small" type="button" id="logoutBtn" hidden>Abmelden</button>
     </div>
@@ -239,23 +328,39 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
   <div id="app" hidden>
 
   <section class="hero" aria-label="Übersicht">
-    <div class="hero-main">
-      <div class="hero-figure">
-        <div class="label">Noch verfügbar bis zum nächsten Lohn</div>
+    <div class="ring-wrap">
+      <svg class="ring" id="ring" viewBox="0 0 250 250" role="img" aria-label="Aufteilung des Geldes"></svg>
+      <div class="ring-mid">
+        <div class="label">Noch verfügbar</div>
         <div class="rest" id="avail">0,00 €</div>
-        <div class="perday" id="perDay"></div>
-        <button class="linklike" type="button" id="fixBtn">Betrag stimmt nicht? Korrigieren</button>
-        <form class="confirm" id="fixForm" hidden autocomplete="off">
-          <label for="fixAmount"><strong>Wie viel hast du wirklich noch?</strong></label>
-          <div class="fix-row">
-            <button class="sign" type="button" id="fixSign" aria-pressed="false" aria-label="Im Minus">+</button>
-            <div class="money big"><input id="fixAmount" inputmode="decimal" placeholder="0,00"><span>€</span></div>
-          </div>
-          <span class="hint">Bist du im Minus? Tipp auf das <b>+</b>, dann wird daraus ein <b>−</b>.</span>
-          <span class="hint">Den Unterschied trägt die Seite unten als „Korrektur“ ein. Du kannst ihn dort jederzeit wieder löschen.</span>
-          <div class="row-btns"><button class="btn" type="submit">Übernehmen</button><button class="btn ghost" type="button" id="fixCancel">Abbrechen</button></div>
-        </form>
       </div>
+    </div>
+    <div class="perday" id="perDay"></div>
+    <div class="ring-keys" id="legend"></div>
+    <div class="hero-figure">
+      <button class="linklike" type="button" id="fixBtn">Betrag stimmt nicht? Korrigieren</button>
+      <form class="confirm" id="fixForm" hidden autocomplete="off">
+        <label for="fixAmount"><strong>Wie viel hast du wirklich noch?</strong></label>
+        <div class="fix-row">
+          <button class="sign" type="button" id="fixSign" aria-pressed="false" aria-label="Im Minus">+</button>
+          <div class="money big"><input id="fixAmount" inputmode="decimal" placeholder="0,00"><span>€</span></div>
+        </div>
+        <span class="hint">Bist du im Minus? Tipp auf das <b>+</b>, dann wird daraus ein <b>−</b>.</span>
+        <span class="hint">Den Unterschied trägt die Seite unten als „Korrektur“ ein. Du kannst ihn dort jederzeit wieder löschen.</span>
+        <div class="row-btns"><button class="btn" type="submit">Übernehmen</button><button class="btn ghost" type="button" id="fixCancel">Abbrechen</button></div>
+      </form>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>Einkommen</small><b class="num" id="stIncome">0,00 €</b></div>
+      <div class="stat"><small>Fixkosten</small><b class="num" id="stCosts">0,00 €</b></div>
+      <div class="stat"><small>Ausgaben</small><b class="num spent" id="stSpent">0,00 €</b></div>
+    </div>
+    <div class="quick">
+      <button class="btn" type="button" data-quick="out">− Ausgabe</button>
+      <button class="btn dark" type="button" data-quick="in">+ Einzahlung</button>
+    </div>
+    <details class="calc">
+      <summary>So wird gerechnet</summary>
       <dl class="equation num">
         <dt>Einkommen</dt><dd id="eqIncome">0,00 €</dd>
         <dt>Fixkosten</dt><dd id="eqCosts">− 0,00 €</dd>
@@ -264,16 +369,16 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
         <dt>Ausgaben</dt><dd id="eqSpent">− 0,00 €</dd>
         <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
       </dl>
-    </div>
-    <div class="bar" id="bar" role="img" aria-label="Aufteilung des Geldes"></div>
-    <div class="legend" id="legend"></div>
+    </details>
+    <div class="section-head"><h2>Fixkosten</h2><span class="label">pro Monat</span></div>
+    <div class="chips" id="chips"></div>
     <p class="saving-line" id="savingLine" hidden></p>
   </section>
 
   <div class="cols">
     <section class="panel" aria-labelledby="spendH">
       <div class="panel-head">
-        <h2 id="spendH">Ausgaben und Einzahlungen</h2>
+        <h2 id="spendH">Letzte Einträge</h2>
         <span class="label" id="spendSince"></span>
       </div>
       <form class="formbox" id="spendForm" autocomplete="off">
@@ -291,7 +396,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
       <div class="list" id="spendList"></div>
       <div class="foot" id="spendFoot">
         <span class="hint" id="spendSum"></span>
-        <button class="btn ghost" type="button" id="resetBtn">Neuer Lohn ist da</button>
+        <button class="btn outline" type="button" id="resetBtn">Neuer Lohn ist da</button>
       </div>
       <div class="confirm" id="resetConfirm" hidden>
         <strong>Neuen Zeitraum starten?</strong>
@@ -325,7 +430,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
 
   <section class="panel" aria-labelledby="costH">
     <div class="panel-head">
-      <h2 id="costH">Fixkosten</h2>
+      <h2 id="costH">Alle Fixkosten</h2>
       <span class="label" id="costCount">0 Posten</span>
     </div>
     <form class="formbox" id="costForm" autocomplete="off">
@@ -382,6 +487,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
 <script>
 (() => {
   const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Sonstiges: "--c7" };
+  const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Freizeit: "🎉", Sonstiges: "📦" };
   const DEFAULT_CATS = Object.keys(CAT_COLORS);
   const EXTRA_COLORS = ["--c5", "--c1", "--c4", "--c6", "--c3", "--c8"];
   const SAVING_CAT = "Sparen";
@@ -478,21 +584,37 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
       const per = t.avail > 0 ? t.avail / p.days : 0;
       const days = `${p.days} ${p.days === 1 ? "Tag" : "Tage"}`;
       $("perDay").innerHTML = t.avail < 0
-        ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}.`
+        ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`
         : `Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}, also etwa <b>${fmt(per)}</b> pro Tag.`;
     } else {
       $("perDay").innerHTML = t.avail < 0 ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span>` : "";
     }
 
-    const cats = categories().map(cat => ({ cat, sum: sum(state.items.filter(i => i.category === cat), monthly) })).filter(s => s.sum > 0);
+    $("stIncome").textContent = fmt(t.income);
+    $("stCosts").textContent = fmt(t.costs);
+    $("stSpent").textContent = fmt(t.spent);
+
+    // ring: fixed costs (grey), spending (orange), what is still free (green); full circle = income plus deposits
     const base = Math.max(t.income + t.added, t.costs + t.spent) || 1;
     const spentShown = Math.min(t.spent, Math.max(t.rest + t.added, 0));
-    const w = n => `${(n / base) * 100}%`;
-    $("bar").innerHTML = cats.map(s => `<span style="width:${w(s.sum)};background:${colorFor(s.cat)}" title="${esc(s.cat)}: ${fmt(s.sum)}"></span>`).join("")
-      + (spentShown > 0 ? `<span class="spent-swatch" style="width:${w(spentShown)}" title="Ausgaben: ${fmt(t.spent)}"></span>` : "");
-    $("legend").innerHTML = cats.map(s => `<span><i style="background:${colorFor(s.cat)}"></i>${esc(s.cat)} <b class="num">${fmt(s.sum)}</b></span>`).join("")
-      + (t.spent ? `<span><i class="spent-swatch"></i>Ausgaben <b class="num">${fmt(t.spent)}</b></span>` : "")
-      + (t.income ? `<span><i class="free-swatch"></i>Noch verfügbar <b class="num">${fmt(Math.max(t.avail, 0))}</b></span>` : "");
+    const free = Math.max(t.avail, 0);
+    const R = 110, C = 2 * Math.PI * R;
+    const segs = [[Math.min(t.costs, base), "var(--ring-base)"], [spentShown, "var(--spent)"], [free, "var(--good)"]].filter(([v]) => v > 0);
+    let off = 0;
+    const gap = segs.length > 1 ? 4 : 0;
+    $("ring").innerHTML = `<circle r="${R}" cx="125" cy="125" fill="none" stroke="var(--surface)" stroke-width="18"/>`
+      + segs.map(([v, col]) => {
+        const len = Math.max(C * v / base - gap, 0.5);
+        const el = `<circle r="${R}" cx="125" cy="125" fill="none" stroke="${col}" stroke-width="18" stroke-linecap="round" stroke-dasharray="${len} ${C}" stroke-dashoffset="${-off}"/>`;
+        off += C * v / base;
+        return el;
+      }).join("");
+    $("legend").innerHTML = t.income
+      ? `<span><i style="background:var(--ring-base)"></i>Fixkosten</span>` + (t.spent ? `<span><i style="background:var(--spent)"></i>Ausgaben</span>` : "") + (free > 0 ? `<span><i style="background:var(--good)"></i>Frei</span>` : "")
+      : "";
+
+    const cats = categories().map(cat => ({ cat, sum: sum(state.items.filter(i => i.category === cat), monthly) })).filter(s => s.sum > 0);
+    $("chips").innerHTML = cats.map(s => `<a class="chip" href="#ledger" style="border-top-color:${colorFor(s.cat)}"><span class="chip-ico" aria-hidden="true">${CAT_ICONS[s.cat] || "•"}</span><small>${esc(s.cat)}</small><b class="num">${fmt(s.sum)}</b></a>`).join("");
 
     $("savingLine").hidden = !t.savings;
     if (t.savings) {
@@ -526,7 +648,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
   }
   function spendRow(e) {
     const inn = e.kind === "in";
-    return `<div class="item spend"><span class="date num">${fmtDate(e.date)}</span><span class="name">${esc(e.name)}</span>
+    return `<div class="item spend"><span class="name">${esc(e.name)}<span class="meta num">${fmtDate(e.date)}</span></span>
       <span class="num ${inn ? "plus" : ""}">${inn ? "+" : "−"} ${fmt(e.amount)}</span>
       <span class="actions"><button class="icon" type="button" data-spend-edit="${e.id}" aria-label="${esc(e.name)} ändern">✎</button><button class="icon" type="button" data-spend-del="${e.id}" aria-label="${esc(e.name)} löschen">✕</button></span></div>`;
   }
@@ -692,6 +814,11 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     $("spendBtn").classList.toggle("good", isIn);
   }
   document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
+  document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => {
+    setKind(b.dataset.quick);
+    $("spendForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("spendAmount").focus({ preventScroll: true });
+  }));
   $("spendDate").value = today();
   $("spendForm").addEventListener("submit", e => {
     e.preventDefault();
