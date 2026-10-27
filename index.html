@@ -1526,7 +1526,7 @@ body.is-locked .wrap { visibility: hidden; }
   // It keeps the open app private on the phone; the real protection of the data is still the login.
   const LOCK_KEY = "fixkosten-lock-";
   const AWAY_MS = 60 * 1000;
-  let locked = false, hiddenAt = 0, pinEntry = "", pinFails = 0, pinBlockedUntil = 0;
+  let locked = false, faceBusy = false, hiddenAt = 0, pinEntry = "", pinFails = 0, pinBlockedUntil = 0;
   // a reload of an unlocked app (↻ or pulling down) should not ask for the PIN again;
   // sessionStorage survives a reload but not closing the app
   const AWAKE_KEY = "fixkosten-awake";
@@ -1601,6 +1601,8 @@ body.is-locked .wrap { visibility: hidden; }
     $("lock").hidden = false; document.body.classList.add("is-locked");
     $("faceUnlock").hidden = !c.cred; $("unlockMsg").textContent = "";
     renderDots();
+    // start Face ID right away; if the browser wants a tap first, the button stays as fallback
+    if (c.cred && document.visibilityState === "visible") setTimeout(() => faceUnlock(true), 300);
   }
   function unlock() {
     locked = false; pinEntry = ""; pinFails = 0;
@@ -1626,8 +1628,9 @@ body.is-locked .wrap { visibility: hidden; }
     else $("unlockMsg").textContent = "Falsche PIN.";
     renderDots();
   });
-  $("faceUnlock").addEventListener("click", async () => {
-    const c = lockCfg(); if (!c?.cred) return;
+  async function faceUnlock(auto) {
+    const c = lockCfg(); if (!c?.cred || !locked || faceBusy) return;
+    faceBusy = true;
     try {
       await navigator.credentials.get({ publicKey: {
         challenge: randomBytes(32),
@@ -1635,8 +1638,10 @@ body.is-locked .wrap { visibility: hidden; }
         userVerification: "required", timeout: 60000
       } });
       unlock();
-    } catch { $("unlockMsg").textContent = "Face ID hat nicht geklappt. Nimm die PIN."; }
-  });
+    } catch { if (!auto) $("unlockMsg").textContent = "Face ID hat nicht geklappt. Nimm die PIN."; }
+    finally { faceBusy = false; }
+  }
+  $("faceUnlock").addEventListener("click", () => faceUnlock(false));
   $("lockLogout").addEventListener("click", async () => {
     setLockCfg(null); unlock();
     if (unsaved) await save();
