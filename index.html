@@ -327,6 +327,7 @@ th, td { border-bottom-color: var(--line); }
 .row-btns.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
 .fields .row-btns.wide .btn { grid-column: auto; }
 .debt-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.clear-date { font-size: .8rem; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px 0 0; }
 .home-cards { display: grid; gap: 10px; }
 .home-cards:empty { display: none; }
 .mini-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 16px; padding: 12px 14px; border: 0; color: var(--ink); text-align: left; width: 100%; cursor: pointer; font: inherit; }
@@ -662,7 +663,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="newCat">Kategorie</label><input type="text" id="newCat" list="catList" placeholder="Verträge" required></div>
         <div class="field"><label for="newAmount">Betrag</label><div class="money"><input id="newAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
         <div class="field"><label for="newEvery">Wie oft abgebucht</label><select id="newEvery"></select></div>
-        <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"></div>
+        <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"><button type="button" class="linklike clear-date" data-clear="newDue">Datum entfernen</button></div>
         <div class="field wide mode-field" hidden><label for="newMode">Wie abziehen</label><select id="newMode" name="mode"><option value="spread">Jeden Monat einen Teil weglegen</option><option value="full">Alles im Monat der Abbuchung abziehen</option></select></div>
         <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird. Willst du alles im Abbuchungsmonat abziehen, brauchst du das Datum.</span>
         <div class="row-btns wide"><button class="btn" type="submit">Hinzufügen</button><button class="btn ghost" type="button" id="costClose">Fertig</button></div>
@@ -1244,7 +1245,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="se-name">${e.kind === "in" ? "Woher" : "Wofür"}</label><input type="text" id="se-name" name="name" value="${esc(e.name)}" required></div>
         <div class="field"><label for="se-kind">Art</label><select id="se-kind" name="kind"><option value="out"${e.kind !== "in" ? " selected" : ""}>Ausgabe</option><option value="in"${e.kind === "in" ? " selected" : ""}>Einzahlung</option></select></div>
         <div class="field"><label for="se-date">Datum</label><input type="date" id="se-date" name="date" value="${e.date}" required></div>
-        <div class="field wide"><label for="se-pay">Abgebucht am (leer = sofort)</label><input type="date" id="se-pay" name="payOn" value="${e.payOn || ""}"></div>
+        <div class="field wide"><label for="se-pay">Abgebucht am (leer = sofort)</label><input type="date" id="se-pay" name="payOn" value="${e.payOn || ""}"><button type="button" class="linklike clear-date" data-clear="se-pay">Datum entfernen</button></div>
         <div class="field wide"><label for="se-cat">Kategorie (bei Ausgaben)</label><select id="se-cat" name="cat">${Object.keys(SPEND_CATS).map(c => `<option${c === e.cat ? " selected" : ""}>${c}</option>`).join("")}</select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
@@ -1287,7 +1288,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="ce-cat">Kategorie</label><input type="text" id="ce-cat" name="category" list="catList" value="${esc(it.category)}" required></div>
         <div class="field"><label for="ce-amt">Betrag</label><div class="money"><input id="ce-amt" name="amount" inputmode="decimal" value="${toField(it.amount)}" required><span>€</span></div></div>
         <div class="field"><label for="ce-int">Wie oft abgebucht</label><select id="ce-int" name="every">${everyOptions(it.every)}</select></div>
-        <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"></div>
+        <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"><button type="button" class="linklike clear-date" data-clear="ce-due">Datum entfernen</button></div>
         <div class="field wide mode-field"${it.every > 1 ? "" : " hidden"}><label for="ce-mode">Wie abziehen</label><select id="ce-mode" name="mode"><option value="spread"${it.mode !== "full" ? " selected" : ""}>Jeden Monat einen Teil weglegen</option><option value="full"${it.mode === "full" ? " selected" : ""}>Alles im Monat der Abbuchung abziehen</option></select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
@@ -1437,6 +1438,13 @@ body.is-locked .wrap { visibility: hidden; }
     $("payday").scrollIntoView({ behavior: "smooth", block: "center" });
     $("payday").focus({ preventScroll: true });
   });
+  // iOS date pickers have no way to empty the field
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-clear]"); if (!b) return;
+    const input = $(b.dataset.clear); if (!input) return;
+    input.value = ""; input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   // --- events: calendar ---
   $("calPrev").addEventListener("click", () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderCalendar(); });
   $("calNext").addEventListener("click", () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderCalendar(); });
