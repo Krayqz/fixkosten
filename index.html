@@ -1502,7 +1502,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("auth").hidden = !!user; $("app").hidden = !user; $("logoutBtn").hidden = !user;
     if (!user) { state = blank(); render(); setStatus("idle", ""); $("authEmail").focus(); return; }
     try { const c = localStorage.getItem(CACHE_KEY + user.id); state = c ? normalize(JSON.parse(c)) : blank(); } catch { state = blank(); }
-    if (lockCfg()) lockNow(); else unlock();
+    if (lockCfg() && !justReloaded()) lockNow(); else unlock();
     render();
     setStatus("busy", "Lädt …");
     loadRemote();
@@ -1527,6 +1527,11 @@ body.is-locked .wrap { visibility: hidden; }
   const LOCK_KEY = "fixkosten-lock-";
   const AWAY_MS = 60 * 1000;
   let locked = false, hiddenAt = 0, pinEntry = "", pinFails = 0, pinBlockedUntil = 0;
+  // a reload of an unlocked app (↻ or pulling down) should not ask for the PIN again;
+  // sessionStorage survives a reload but not closing the app
+  const AWAKE_KEY = "fixkosten-awake";
+  const markAwake = () => { try { if (!locked) sessionStorage.setItem(AWAKE_KEY, String(Date.now())); } catch {} };
+  const justReloaded = () => { try { return Date.now() - Number(sessionStorage.getItem(AWAKE_KEY) || 0) < AWAY_MS; } catch { return false; } };
   const lockCfg = () => { try { return user ? JSON.parse(localStorage.getItem(LOCK_KEY + user.id) || "null") : null; } catch { return null; } };
   const setLockCfg = c => { try { c ? localStorage.setItem(LOCK_KEY + user.id, JSON.stringify(c)) : localStorage.removeItem(LOCK_KEY + user.id); } catch {} };
   const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -1600,6 +1605,7 @@ body.is-locked .wrap { visibility: hidden; }
   function unlock() {
     locked = false; pinEntry = ""; pinFails = 0;
     $("lock").hidden = true; document.body.classList.remove("is-locked");
+    markAwake();
   }
   function renderDots() {
     const len = lockCfg()?.len || 4;
@@ -1637,9 +1643,10 @@ body.is-locked .wrap { visibility: hidden; }
     await sb.auth.signOut();
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") hiddenAt = Date.now();
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); markAwake(); }
     else if (user && !locked && hiddenAt && Date.now() - hiddenAt > AWAY_MS) lockNow();
   });
+  addEventListener("pagehide", markAwake);
 
   // --- reload (the home-screen app has no browser bar) ---
   $("reloadBtn").addEventListener("click", async () => {
