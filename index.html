@@ -324,6 +324,48 @@ th, td { border-bottom-color: var(--line); }
 .col.now .col-lbl { color: var(--good); font-weight: 700; }
 .cmp-text { font-size: .88rem; color: #b9c6bf; }
 .cmp-now { display: flex; justify-content: space-between; font-weight: 600; }
+.row-btns.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.fields .row-btns.wide .btn { grid-column: auto; }
+.debt-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.home-cards { display: grid; gap: 10px; }
+.home-cards:empty { display: none; }
+.mini-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 16px; padding: 12px 14px; border: 0; color: var(--ink); text-align: left; width: 100%; cursor: pointer; font: inherit; }
+.mini-card .m-ico { font-size: 1.4rem; }
+.mini-card span:nth-child(2) { flex: 1; min-width: 0; font-size: .9rem; }
+.mini-card small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.mini-card b { color: var(--muted); font-size: 1.2rem; }
+.mini-card small b { color: var(--ink); font-size: inherit; font-weight: 700; }
+.mini-card.pay { border: 1px solid var(--good); }
+.menu { display: grid; background: var(--surface); border-radius: 16px; overflow: hidden; }
+.menu button { display: flex; align-items: center; gap: 12px; padding: 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); text-align: left; font: 600 .98rem var(--body); cursor: pointer; }
+.menu button:last-child { border-bottom: 0; }
+.menu button > span:nth-child(2) { flex: 1; min-width: 0; }
+.menu small { display: block; color: var(--muted); font-weight: 500; font-size: .8rem; margin-top: 2px; }
+.menu b { color: var(--muted); font-size: 1.3rem; font-weight: 400; }
+.m-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; font-size: 1.1rem; flex: none; }
+.back { border: 0; background: none; color: var(--good); font: 600 1rem var(--body); padding: 2px 0; justify-self: start; cursor: pointer; }
+.back:focus-visible, .menu button:focus-visible, .mini-card:focus-visible, .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-head span { text-align: center; font-size: .72rem; color: var(--muted); font-weight: 600; }
+.cal-day { aspect-ratio: 1 / 1.1; border: 0; border-radius: 10px; background: var(--bg); color: var(--ink); display: grid; grid-template-rows: 1fr auto; justify-items: center; padding: 5px 2px 6px; font: 600 .85rem var(--body); cursor: pointer; }
+.cal-day.empty { background: none; cursor: default; }
+.cal-day.today { box-shadow: inset 0 0 0 1.5px var(--good); }
+.cal-day[aria-pressed="true"], .cal-day.past[aria-pressed="true"] { background: var(--good); color: var(--accent-ink); }
+.cal-day.past { color: var(--muted); }
+.cal-dots { display: flex; gap: 3px; min-height: 6px; }
+.cal-dots i { width: 6px; height: 6px; border-radius: 50%; }
+.cal-day[aria-pressed="true"] .cal-dots i { box-shadow: 0 0 0 1px var(--accent-ink); }
+.cal-keys { flex-wrap: wrap; gap: 6px 14px; }
+.cal-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .92rem; }
+.cal-row small { display: block; color: var(--muted); font-size: .78rem; }
+.cal-row .num { font-weight: 600; }
+.debt-group { background: var(--surface); border-radius: 16px; padding: 4px 14px 8px; margin-top: 10px; }
+.debt-group .group-head { display: flex; justify-content: space-between; align-items: center; }
+.debt-group h3 { font-size: .95rem; }
+.debt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.debt-row:last-child { border-bottom: 0; }
+.debt-row small { display: block; color: var(--muted); font-size: .78rem; }
+.debt-done { display: grid; gap: 8px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(10, 13, 12, .94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--line); padding: 6px max(4px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
 .tabbar button { border: 0; background: none; color: var(--muted); display: grid; justify-items: center; gap: 2px; font: 600 .68rem var(--body); padding: 4px 0; cursor: pointer; min-height: 48px; }
 .tabbar button span { font-size: 1.25rem; line-height: 1.2; }
@@ -435,6 +477,7 @@ body.is-locked .wrap { visibility: hidden; }
 
   <div id="app" hidden>
 
+  <button class="back" type="button" id="backBtn" data-go="more" hidden>‹ Mehr</button>
   <section class="hero" aria-label="Übersicht" data-tab="home">
     <div class="warn" id="warn" role="alert" hidden></div>
     <div class="ring-wrap">
@@ -447,6 +490,7 @@ body.is-locked .wrap { visibility: hidden; }
     </div>
     <div class="perday" id="perDay"></div>
     <div class="ring-keys" id="legend"></div>
+    <div class="home-cards" id="homeCards"></div>
     <div class="today" id="today"></div>
     <div class="next-month" id="nextMonth"></div>
     <div class="hero-figure">
@@ -461,11 +505,6 @@ body.is-locked .wrap { visibility: hidden; }
         <span class="hint">Den Unterschied trägt die Seite unten als „Korrektur“ ein. Du kannst ihn dort jederzeit wieder löschen.</span>
         <div class="row-btns"><button class="btn" type="submit">Übernehmen</button><button class="btn ghost" type="button" id="fixCancel">Abbrechen</button></div>
       </form>
-    </div>
-    <div class="stats">
-      <div class="stat"><small>Einkommen</small><b class="num" id="stIncome">0,00 €</b></div>
-      <div class="stat"><small>Fixkosten</small><b class="num" id="stCosts">0,00 €</b></div>
-      <div class="stat"><small>Ausgaben</small><b class="num spent" id="stSpent">0,00 €</b></div>
     </div>
     <div class="quick">
       <button class="btn" type="button" data-quick="out">− Ausgabe</button>
@@ -482,9 +521,6 @@ body.is-locked .wrap { visibility: hidden; }
         <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
       </dl>
     </details>
-    <div class="section-head"><h2>Fixkosten</h2><span class="label">diesen Monat</span></div>
-    <div class="chips" id="chips"></div>
-    <p class="saving-line" id="savingLine" hidden></p>
   </section>
 
   <div class="cols">
@@ -493,7 +529,11 @@ body.is-locked .wrap { visibility: hidden; }
         <h2 id="spendH">Letzte Einträge</h2>
         <span class="label" id="spendSince"></span>
       </div>
-      <form class="formbox" id="spendForm" autocomplete="off">
+      <div class="quick" id="entryQuick">
+        <button class="btn" type="button" data-quick="out">− Ausgabe</button>
+        <button class="btn dark" type="button" data-quick="in">+ Einzahlung</button>
+      </div>
+      <form class="formbox" id="spendForm" autocomplete="off" hidden>
         <div class="seg" role="group" aria-label="Art des Eintrags">
           <button type="button" data-kind="out" aria-pressed="true">− Ausgabe</button>
           <button type="button" data-kind="in" aria-pressed="false">+ Einzahlung</button>
@@ -505,7 +545,7 @@ body.is-locked .wrap { visibility: hidden; }
           <div class="field wide"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
           <label class="check wide later-check" id="laterWrap"><input type="checkbox" id="spendLater"><span>Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“</span></label>
           <div class="field wide" id="payOnField" hidden><label for="spendPayOn">Abgebucht am</label><input type="date" id="spendPayOn"></div>
-          <button class="btn" type="submit" id="spendBtn">Abziehen</button>
+          <div class="row-btns wide"><button class="btn" type="submit" id="spendBtn">Abziehen</button><button class="btn ghost" type="button" id="spendClose">Fertig</button></div>
         </div>
       </form>
       <div class="box later-box" id="laterList" hidden></div>
@@ -518,11 +558,60 @@ body.is-locked .wrap { visibility: hidden; }
         <strong>Neuen Zeitraum starten?</strong>
         <span>Die Einträge oben werden gelöscht, nur „Kommt noch“ bleibt stehen. Im Verlauf bleibt gespeichert, wie viel du ausgegeben hast.</span>
         <label class="check"><input type="checkbox" id="carryOver" checked><span id="carryText">Übriges Geld mitnehmen</span></label>
+        <strong>Wie viel Lohn ist diesmal gekommen?</strong>
+        <div class="fields">
+          <div class="field"><label for="resetMain">Hauptjob</label><div class="money"><input id="resetMain" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div></div>
+          <div class="field"><label for="resetMini">Minijob</label><div class="money"><input id="resetMini" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div></div>
+        </div>
+        <span class="hint">Schon richtig eingetragen? Dann einfach so lassen. Der Betrag gilt ab jetzt für den neuen Monat.</span>
         <div class="row-btns">
           <button class="btn" type="button" id="resetYes">Neuen Zeitraum starten</button>
           <button class="btn ghost" type="button" id="resetNo">Abbrechen</button>
         </div>
       </div>
+    </section>
+
+    <section class="panel" aria-labelledby="calH" data-tab="cal">
+      <div class="panel-head">
+        <h2 id="calH">Kalender</h2>
+        <div class="year-nav"><button class="icon" type="button" id="calPrev" aria-label="Monat davor">‹</button><span class="num" id="calLabel"></span><button class="icon" type="button" id="calNext" aria-label="Monat danach">›</button></div>
+      </div>
+      <div class="box cal-box">
+        <div class="cal-grid cal-head" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="ring-keys cal-keys"><span><i style="background:var(--good)"></i>Lohn/rein</span><span><i style="background:var(--ring-base)"></i>Fixkosten</span><span><i style="background:var(--spent)"></i>Ausgabe</span><span><i style="background:var(--c4)"></i>später bezahlt</span></div>
+      </div>
+      <div class="box" id="calDay"></div>
+      <div class="box" id="calSum"></div>
+    </section>
+
+    <section class="panel" aria-label="Mehr" data-tab="more">
+      <h2>Mehr</h2>
+      <div class="menu">
+        <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="debtH" data-tab="debts">
+      <h2 id="debtH">Geld verliehen &amp; geliehen</h2>
+      <form class="formbox" id="debtForm" autocomplete="off">
+        <div class="seg debt-seg" role="group" aria-label="Richtung">
+          <button type="button" data-dir="owed" aria-pressed="true">Mir schuldet wer</button>
+          <button type="button" data-dir="owe" aria-pressed="false">Ich schulde wem</button>
+        </div>
+        <div class="fields">
+          <div class="field"><label for="debtPerson" id="debtPersonLabel">Wer schuldet dir was?</label><input type="text" id="debtPerson" placeholder="z. B. Max" required></div>
+          <div class="field"><label for="debtAmount">Betrag</label><div class="money"><input id="debtAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
+          <div class="field wide"><label for="debtNote">Wofür (freiwillig)</label><input type="text" id="debtNote" placeholder="z. B. Kino"></div>
+          <label class="check wide"><input type="checkbox" id="debtBook"><span id="debtBookText">Geld ist schon weg: auch als Ausgabe eintragen</span></label>
+          <button class="btn" type="submit">Hinzufügen</button>
+        </div>
+      </form>
+      <div id="debtList"></div>
     </section>
 
     <section class="panel" aria-labelledby="anaH" data-tab="stats">
@@ -539,8 +628,9 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="box" id="year"></div>
     </section>
 
-    <section class="panel" aria-labelledby="incH" data-tab="costs">
-      <h2 id="incH">Einkommen</h2>
+    <section class="panel" aria-labelledby="incH" data-tab="income">
+      <h2 id="incH">Lohn &amp; Einkommen</h2>
+      <p class="hint">Das ist dein normaler Lohn. Wenn er mal anders ist, kannst du ihn bei „Neuer Lohn ist da“ für den Monat anpassen.</p>
       <div class="field">
         <label for="mainIncome">Hauptjob, netto im Monat</label>
         <div class="money"><input id="mainIncome" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div>
@@ -563,7 +653,10 @@ body.is-locked .wrap { visibility: hidden; }
       <h2 id="costH">Alle Fixkosten</h2>
       <span class="label" id="costCount">0 Posten</span>
     </div>
-    <form class="formbox" id="costForm" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <p class="saving-line" id="savingLine" hidden></p>
+    <button class="btn dark" type="button" id="costOpen">+ Fixkosten hinzufügen</button>
+    <form class="formbox" id="costForm" autocomplete="off" hidden>
       <div class="fields cost">
         <div class="field wide"><label for="newName">Was</label><input type="text" id="newName" placeholder="z. B. Handyvertrag" required></div>
         <div class="field"><label for="newCat">Kategorie</label><input type="text" id="newCat" list="catList" placeholder="Verträge" required></div>
@@ -572,7 +665,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"></div>
         <div class="field wide mode-field" hidden><label for="newMode">Wie abziehen</label><select id="newMode" name="mode"><option value="spread">Jeden Monat einen Teil weglegen</option><option value="full">Alles im Monat der Abbuchung abziehen</option></select></div>
         <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird. Willst du alles im Abbuchungsmonat abziehen, brauchst du das Datum.</span>
-        <button class="btn" type="submit">Hinzufügen</button>
+        <div class="row-btns wide"><button class="btn" type="submit">Hinzufügen</button><button class="btn ghost" type="button" id="costClose">Fertig</button></div>
       </div>
     </form>
     <datalist id="catList"></datalist>
@@ -594,7 +687,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="setH" data-tab="more">
+    <section class="panel" aria-labelledby="setH" data-tab="settings">
       <h2 id="setH">Warnungen und Sperre</h2>
       <div class="box">
         <div class="field">
@@ -624,7 +717,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="backupH" data-tab="more">
+    <section class="panel" aria-labelledby="backupH" data-tab="backup">
       <h2 id="backupH">Daten sichern</h2>
       <p class="hint">Lade ab und zu eine Sicherung herunter. Damit kannst du deine Daten wiederherstellen oder in eine andere Version der Seite mitnehmen.</p>
       <div class="btn-row">
@@ -645,9 +738,9 @@ body.is-locked .wrap { visibility: hidden; }
   <nav class="tabbar" id="tabbar" aria-label="Bereiche">
     <button type="button" data-go="home" aria-current="page"><span aria-hidden="true">◉</span>Übersicht</button>
     <button type="button" data-go="entries"><span aria-hidden="true">☰</span>Einträge</button>
-    <button type="button" data-go="stats"><span aria-hidden="true">▥</span>Auswertung</button>
+    <button type="button" data-go="cal"><span aria-hidden="true">▦</span>Kalender</button>
     <button type="button" data-go="costs"><span aria-hidden="true">▤</span>Fixkosten</button>
-    <button type="button" data-go="more"><span aria-hidden="true">⚙︎</span>Mehr</button>
+    <button type="button" data-go="more"><span aria-hidden="true">⋯</span>Mehr</button>
   </nav>
   </div>
 </div>
@@ -691,7 +784,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], periodStart: null, history: [], warnBelow: 50, warnDaily: true });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], periodStart: null, history: [], warnBelow: 50, warnDaily: true });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -787,13 +880,16 @@ body.is-locked .wrap { visibility: hidden; }
     if (sb) {
       const showWelcome = welcome && !state.items.length && !state.mainIncome;
       $("notice").hidden = !showWelcome;
-      if (showWelcome) $("notice").textContent = "Willkommen! Hast du eine Sicherung von deiner alten Seite? Dann lade sie ganz unten bei „Daten sichern“. Sonst fang einfach mit deinem Einkommen an.";
+      if (showWelcome) $("notice").textContent = "Willkommen! Hast du eine Sicherung von deiner alten Seite? Dann lade sie unter „Mehr“ → „Daten sichern“. Sonst fang einfach mit deinem Einkommen an (unter „Mehr“ → „Lohn & Einkommen“).";
     }
     renderHero(t);
     renderIncome(t);
     renderSpending(t);
     renderToday(t);
     renderNextMonth(t);
+    renderHomeCards(t);
+    renderCalendar();
+    renderDebts();
     renderWarn(t);
     renderSettings();
     renderStats(t);
@@ -828,9 +924,6 @@ body.is-locked .wrap { visibility: hidden; }
       $("perDay").innerHTML = t.avail < 0 ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span>` : "";
     }
 
-    $("stIncome").textContent = fmt(t.income);
-    $("stCosts").textContent = fmt(t.costs);
-    $("stSpent").textContent = fmt(t.spent);
 
     // ring: fixed costs (grey), spending (orange), what is still free (green); full circle = income plus deposits
     const base = Math.max(t.income + t.added, t.costs + t.spent) || 1;
@@ -932,6 +1025,95 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
         ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“, die erst später abgebucht werden.</p>` : ""}
       </div></details>`;
+  }
+
+  // small cards on the overview: wage day reached, open debts
+  function payReached() {
+    if (!state.payday || !state.periodStart) return false;
+    const start = new Date(state.periodStart); start.setDate(start.getDate() + 1);
+    return nextPayday(state.payday, start).date <= new Date();
+  }
+  function renderHomeCards(t) {
+    const owed = sum(state.debts.filter(x => x.dir === "owed"), x => x.amount), owe = sum(state.debts.filter(x => x.dir === "owe"), x => x.amount);
+    const parts = [owed ? `Dir schuldet man <b class="num">${fmt(owed)}</b>` : "", owe ? `Du schuldest <b class="num">${fmt(owe)}</b>` : ""].filter(Boolean);
+    $("homeCards").innerHTML = (t.income && payReached() ? `<button class="mini-card pay" type="button" data-home="pay"><span class="m-ico" aria-hidden="true">💶</span><span>Ist dein Lohn schon da?<small>Tipp hier, um den neuen Monat zu starten.</small></span><b aria-hidden="true">›</b></button>` : "")
+      + (parts.length ? `<button class="mini-card" type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small>${parts.join(" · ")}</small></span><b aria-hidden="true">›</b></button>` : "");
+    $("menuDebts").textContent = parts.length ? parts.join(" · ").replace(/<[^>]+>/g, "") : "Wer dir was schuldet und wem du was schuldest";
+    $("menuIncome").textContent = t.income ? `${fmt(t.income)} im Monat${state.payday ? ", Lohn am " + state.payday + "." : ""}` : "Hauptjob, Minijob, Lohntag";
+  }
+
+  // --- calendar: debits, spending and payday per day ---
+  let calMonth = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })(), calSel = today();
+  function calEvents(y, m) {
+    const ev = {}, add = (iso, e) => (ev[iso] = ev[iso] || []).push(e);
+    const inMonth = iso => iso && Number(iso.slice(0, 4)) === y && Number(iso.slice(5, 7)) === m + 1;
+    for (const e of state.expenses) {
+      if (e.cat === CARRY_CAT) continue;
+      const day = payDay(e); if (!inMonth(day)) continue;
+      add(day, { type: e.kind === "in" ? "in" : isLater(e) ? "later" : "out", ico: e.kind === "in" ? "💶" : SPEND_CATS[e.cat]?.[0] || "📦",
+        name: e.name, sub: e.payOn ? `später bezahlt, gekauft am ${fmtDate(e.date)}` : e.kind === "in" ? "Einzahlung" : e.cat, amount: e.kind === "in" ? e.amount : -e.amount });
+    }
+    const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+    for (const it of state.items) {
+      let d = nextDue(it, first);
+      while (d && d <= last) {
+        add(isoDay(d), { type: "cost", ico: CAT_ICONS[it.category] || "📄", name: it.name, sub: `Fixkosten · ${everyLabel(it.every)}`, amount: -it.amount });
+        const n = new Date(d); n.setDate(n.getDate() + 1); d = nextDue(it, n);
+      }
+    }
+    if (state.payday) {
+      const income = (state.mainIncome || 0) + (state.minijob || 0);
+      add(isoDay(new Date(y, m, Math.min(state.payday, last.getDate()))), { type: "pay", ico: "💰", name: "Lohn", sub: "Hauptjob und Minijob", amount: income });
+    }
+    return ev;
+  }
+  const CAL_COLORS = { pay: "var(--good)", in: "var(--good)", cost: "var(--ring-base)", out: "var(--spent)", later: "var(--c4)" };
+  function renderCalendar() {
+    const y = calMonth.getFullYear(), m = calMonth.getMonth(), ev = calEvents(y, m), days = new Date(y, m + 1, 0).getDate();
+    $("calLabel").textContent = calMonth.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    const lead = (calMonth.getDay() + 6) % 7, now = today();
+    if (!calSel.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`)) calSel = isoDay(new Date(y, m, now.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`) ? Number(now.slice(8)) : 1));
+    let html = "<span class=\"cal-day empty\"></span>".repeat(lead);
+    for (let d = 1; d <= days; d++) {
+      const iso = isoDay(new Date(y, m, d)), list = ev[iso] || [];
+      const types = [...new Set(list.map(e => e.type === "in" ? "pay" : e.type))].slice(0, 3);
+      html += `<button type="button" class="cal-day${iso === now ? " today" : ""}${iso < now ? " past" : ""}" data-day="${iso}" aria-pressed="${iso === calSel}" aria-label="${fmtDate(iso)}${list.length ? ", " + list.length + " Einträge" : ""}"><span>${d}</span><span class="cal-dots">${types.map(t => `<i style="background:${CAL_COLORS[t]}"></i>`).join("")}</span></button>`;
+    }
+    $("calGrid").innerHTML = html;
+    const sel = ev[calSel] || [];
+    $("calDay").innerHTML = `<div class="lock-head"><strong>${new Date(calSel + "T12:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}</strong></div>`
+      + (sel.length ? sel.map(e => `<div class="cal-row"><span aria-hidden="true">${e.ico}</span><span>${esc(e.name)}<small>${esc(e.sub)}</small></span><span class="num ${e.amount > 0 ? "plus" : ""}">${e.amount > 0 ? "+" : "−"} ${fmt(Math.abs(e.amount))}</span></div>`).join("")
+        : `<p class="hint">An diesem Tag ist nichts eingetragen.</p>`);
+    const all = Object.values(ev).flat(), tot = type => sum(all.filter(e => type.includes(e.type)), e => Math.abs(e.amount));
+    const undated = state.items.filter(it => !it.due).length;
+    $("calSum").innerHTML = `<div class="lock-head"><strong>Im ${calMonth.toLocaleDateString("de-DE", { month: "long" })}</strong></div>`
+      + `<div class="nm-row"><span>Fixkosten-Abbuchungen</span><span class="num">${fmt(tot(["cost"]))}</span></div>`
+      + `<div class="nm-row"><span>Ausgaben</span><span class="num">${fmt(tot(["out", "later"]))}</span></div>`
+      + `<div class="nm-row"><span>Lohn und Einzahlungen</span><span class="num">${fmt(tot(["pay", "in"]))}</span></div>`
+      + (undated ? `<p class="hint">${undated} Fixkosten haben kein Abbuchungsdatum und fehlen deshalb im Kalender. Du kannst das Datum unter „Fixkosten“ eintragen (✎).</p>` : "")
+      + `<p class="hint">Ausgaben siehst du nur für den laufenden Monat, weil sie bei „Neuer Lohn ist da“ in den Verlauf wandern.</p>`;
+  }
+
+  // --- money lent and borrowed ---
+  let debtDir = "owed", settling = null;
+  function renderDebts() {
+    const grp = (dir, title) => {
+      const list = state.debts.filter(x => x.dir === dir); if (!list.length) return "";
+      return `<div class="debt-group"><div class="group-head"><h3>${title}</h3><span class="num">${fmt(sum(list, x => x.amount))}</span></div>`
+        + list.map(x => `<div class="debt-row"><span>${esc(x.person)}<small>${x.note ? esc(x.note) + " · " : ""}seit ${fmtDate(x.date)}</small></span><span class="num">${fmt(x.amount)}</span>`
+          + `<span class="actions"><button class="icon" type="button" data-debt-done="${x.id}" aria-label="${esc(x.person)} erledigt">✓</button><button class="icon" type="button" data-debt-del="${x.id}" aria-label="${esc(x.person)} löschen">✕</button></span></div>`
+          + (settling === x.id ? `<div class="debt-done"><span>${dir === "owed" ? `Hat ${esc(x.person)} dir die ${fmt(x.amount)} zurückgegeben?` : `Hast du ${esc(x.person)} die ${fmt(x.amount)} zurückgegeben?`}</span>
+            <div class="row-btns"><button class="btn small" type="button" data-debt-book="${x.id}">${dir === "owed" ? "Ja, als Einzahlung eintragen" : "Ja, als Ausgabe eintragen"}</button><button class="btn ghost small" type="button" data-debt-del="${x.id}">Nur löschen</button><button class="btn ghost small" type="button" data-debt-cancel>Abbrechen</button></div></div>` : "")).join("")
+        + `</div>`;
+    };
+    $("debtList").innerHTML = state.debts.length ? grp("owed", "Schuldet dir") + grp("owe", "Du schuldest")
+      : `<div class="empty"><strong>Nichts offen</strong>Trag hier ein, wenn du jemandem Geld leihst oder dir etwas leihst. So vergisst du es nicht.</div>`;
+  }
+  function setDebtDir(dir) {
+    debtDir = dir;
+    document.querySelectorAll(".debt-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.dir === dir)));
+    $("debtPersonLabel").textContent = dir === "owed" ? "Wer schuldet dir was?" : "Wem schuldest du was?";
+    $("debtBookText").textContent = dir === "owed" ? "Geld ist schon weg: auch als Ausgabe eintragen" : "Geld habe ich schon bekommen: auch als Einzahlung eintragen";
   }
 
   function renderToday(t) {
@@ -1146,6 +1328,10 @@ body.is-locked .wrap { visibility: hidden; }
       payOn: e.kind !== "in" && /^\d{4}-\d{2}-\d{2}$/.test(e.payOn) ? e.payOn : null,
       cat: SPEND_CATS[e.cat] ? e.cat : e.name === "Korrektur" ? "Korrektur" : e.name === "Minus aus dem Vormonat" || e.name === "Übrig vom letzten Lohn" ? CARRY_CAT : "Sonstiges"
     })) : [];
+    s.debts = Array.isArray(d.debts) ? d.debts.filter(x => x && x.person).map(x => ({
+      id: String(x.id || uid()), dir: x.dir === "owe" ? "owe" : "owed", person: String(x.person), amount: Number(x.amount) || 0,
+      note: String(x.note || ""), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date) ? x.date : today()
+    })) : [];
     s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
     if ("warnBelow" in d) s.warnBelow = d.warnBelow === null || d.warnBelow === "" ? null : Number(d.warnBelow) || 0;
     if ("warnDaily" in d) s.warnDaily = d.warnDaily !== false;
@@ -1247,30 +1433,71 @@ body.is-locked .wrap { visibility: hidden; }
   });
   $("today").addEventListener("click", e => {
     if (!e.target.closest("[data-goto]")) return;
-    showTab("costs", true);
+    showTab("income", true);
     $("payday").scrollIntoView({ behavior: "smooth", block: "center" });
     $("payday").focus({ preventScroll: true });
   });
+  // --- events: calendar ---
+  $("calPrev").addEventListener("click", () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderCalendar(); });
+  $("calNext").addEventListener("click", () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderCalendar(); });
+  $("calGrid").addEventListener("click", e => { const b = e.target.closest("[data-day]"); if (b) { calSel = b.dataset.day; renderCalendar(); } });
+
+  // --- events: money lent and borrowed ---
+  document.querySelectorAll(".debt-seg button").forEach(b => b.addEventListener("click", () => setDebtDir(b.dataset.dir)));
+  $("debtForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = parseEuro($("debtAmount").value);
+    if (Number.isNaN(amount) || amount <= 0) { $("debtAmount").focus(); return; }
+    const person = $("debtPerson").value.trim(), note = $("debtNote").value.trim();
+    state.debts.push({ id: uid(), dir: debtDir, person, amount, note, date: today() });
+    if ($("debtBook").checked) state.expenses.push(debtDir === "owed"
+      ? { id: uid(), kind: "out", name: `Geliehen an ${person}`, amount, date: today(), cat: "Sonstiges", payOn: null }
+      : { id: uid(), kind: "in", name: `Geliehen von ${person}`, amount, date: today(), cat: "Sonstiges", payOn: null });
+    $("debtPerson").value = $("debtAmount").value = $("debtNote").value = ""; $("debtBook").checked = false;
+    scheduleSave();
+  });
+  $("debtList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const drop = id => { state.debts = state.debts.filter(x => x.id !== id); settling = null; scheduleSave(); };
+    if (b.dataset.debtDone) { settling = settling === b.dataset.debtDone ? null : b.dataset.debtDone; renderDebts(); }
+    else if (b.hasAttribute("data-debt-cancel")) { settling = null; renderDebts(); }
+    else if (b.dataset.debtDel) drop(b.dataset.debtDel);
+    else if (b.dataset.debtBook) {
+      const x = state.debts.find(d => d.id === b.dataset.debtBook); if (!x) return;
+      state.expenses.push(x.dir === "owed"
+        ? { id: uid(), kind: "in", name: `Zurück von ${x.person}`, amount: x.amount, date: today(), cat: "Sonstiges", payOn: null }
+        : { id: uid(), kind: "out", name: `Zurückgezahlt an ${x.person}`, amount: x.amount, date: today(), cat: "Sonstiges", payOn: null });
+      drop(x.id);
+    }
+  });
+
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
+  // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
-    document.querySelectorAll("#tabbar [data-go]").forEach(b => b.dataset.go === name ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    const bar = SUB_PAGES.includes(name) ? "more" : name;
+    document.querySelectorAll("#tabbar [data-go]").forEach(b => b.dataset.go === bar ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    $("backBtn").hidden = bar !== "more" || name === "more";
     try { localStorage.setItem(TAB_KEY, name); } catch {}
     if (!keepScroll) scrollTo(0, 0);
   }
-  $("tabbar").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) showTab(b.dataset.go); });
-  $("chips").addEventListener("click", e => { if (e.target.closest(".chip")) { e.preventDefault(); showTab("costs"); } });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) showTab(b.dataset.go); });
+  $("chips").addEventListener("click", e => { if (e.target.closest(".chip")) e.preventDefault(); });
   let startTab = "home";
-  try { const saved = localStorage.getItem(TAB_KEY); if (document.querySelector(`[data-go="${saved}"]`)) startTab = saved; } catch {}
+  try { const saved = localStorage.getItem(TAB_KEY); if (saved === "more" || document.querySelector(`[data-tab="${saved}"]`)) startTab = saved; } catch {}
   showTab(startTab, true);
 
+  const showSpendForm = on => { $("spendForm").hidden = !on; $("entryQuick").hidden = on; };
   document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => {
     showTab("entries", true);
     setKind(b.dataset.quick);
+    showSpendForm(true);
     $("spendForm").scrollIntoView({ behavior: "smooth", block: "start" });
     $("spendAmount").focus({ preventScroll: true });
   }));
+  $("spendClose").addEventListener("click", () => showSpendForm(false));
   $("spendDate").value = today();
   $("spendLater").addEventListener("change", () => {
     $("payOnField").hidden = !$("spendLater").checked;
@@ -1291,7 +1518,7 @@ body.is-locked .wrap { visibility: hidden; }
     const fresh = warnings(totals()).filter(([k]) => !before.has(k));
     if (fresh.length) toast(fresh.map(([, text]) => `<p>⚠️ ${text}</p>`).join(""));
     $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
-    $("spendAmount").focus();
+    showSpendForm(false);
     scheduleSave();
   });
   const onSpendClick = e => {
@@ -1311,7 +1538,15 @@ body.is-locked .wrap { visibility: hidden; }
   };
   ["spendList", "laterList"].forEach(id => { $(id).addEventListener("click", onSpendClick); $(id).addEventListener("submit", onSpendSubmit); });
 
-  const showReset = on => { $("resetConfirm").hidden = !on; $("spendFoot").hidden = on; };
+  const showReset = on => {
+    $("resetConfirm").hidden = !on; $("spendFoot").hidden = on;
+    if (on) { $("resetMain").value = toField(state.mainIncome); $("resetMini").value = toField(state.minijob); }
+  };
+  $("homeCards").addEventListener("click", e => {
+    if (!e.target.closest("[data-home=pay]")) return;
+    showTab("entries", true); showReset(true);
+    $("resetConfirm").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
   $("resetBtn").addEventListener("click", () => { showReset(true); $("resetNo").focus(); });
   $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
   $("resetYes").addEventListener("click", () => {
@@ -1324,6 +1559,10 @@ body.is-locked .wrap { visibility: hidden; }
       : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today(), cat: CARRY_CAT }]
       : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }])];
     state.periodStart = now;
+    // the wage that actually came in becomes the income from now on
+    const main = parseEuro($("resetMain").value), mini = parseEuro($("resetMini").value);
+    if (!Number.isNaN(main) && main >= 0) state.mainIncome = main;
+    if (!Number.isNaN(mini) && mini >= 0) state.minijob = mini;
     editingSpend = null;
     showReset(false);
     scheduleSave();
@@ -1361,6 +1600,9 @@ body.is-locked .wrap { visibility: hidden; }
 
   // --- events: fixed costs ---
   $("newEvery").innerHTML = everyOptions(1);
+  const showCostForm = on => { $("costForm").hidden = !on; $("costOpen").hidden = on; if (on) $("newName").focus(); };
+  $("costOpen").addEventListener("click", () => showCostForm(true));
+  $("costClose").addEventListener("click", () => showCostForm(false));
   // the "how to deduct" choice only matters for costs debited every 2 months or less often
   const showModeField = form => { form.querySelector(".mode-field").hidden = Number(form.querySelector("[name=every], #newEvery").value) <= 1; };
   $("costForm").addEventListener("change", e => { if (e.target.id === "newEvery") showModeField($("costForm")); });
