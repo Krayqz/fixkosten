@@ -328,6 +328,13 @@ th, td { border-bottom-color: var(--line); }
 .fields .row-btns.wide .btn { grid-column: auto; }
 .debt-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .clear-date { font-size: .8rem; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px 0 0; }
+.wif-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.wif-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: baseline; font-size: .92rem; }
+.wif-row .num { font-weight: 600; white-space: nowrap; }
+.wif-row .arrow { color: var(--muted); }
+.wk-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wk-big b { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+.warn-text { color: var(--spent); }
 .home-cards { display: grid; gap: 10px; }
 .home-cards:empty { display: none; }
 .mini-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 16px; padding: 12px 14px; border: 0; color: var(--ink); text-align: left; width: 100%; cursor: pointer; font: inherit; }
@@ -545,7 +552,9 @@ body.is-locked .wrap { visibility: hidden; }
           <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
           <div class="field wide"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
           <label class="check wide later-check" id="laterWrap"><input type="checkbox" id="spendLater"><span>Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“</span></label>
-          <div class="field wide" id="payOnField" hidden><label for="spendPayOn">Abgebucht am</label><input type="date" id="spendPayOn"></div>
+          <div class="field" id="payOnField" hidden><label for="spendPayOn" id="payOnLabel">Abgebucht am</label><input type="date" id="spendPayOn"></div>
+          <div class="field" id="ratesField" hidden><label for="spendRates">Wie bezahlst du?</label><select id="spendRates"><option value="1">Auf einmal</option><option value="2">In 2 Raten</option><option value="3">In 3 Raten</option><option value="4">In 4 Raten</option><option value="6">In 6 Raten</option><option value="12">In 12 Raten</option></select></div>
+          <span class="hint wide" id="ratesHint" hidden></span>
           <div class="row-btns wide"><button class="btn" type="submit" id="spendBtn">Abziehen</button><button class="btn ghost" type="button" id="spendClose">Fertig</button></div>
         </div>
       </form>
@@ -591,10 +600,24 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="menu">
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="whatif"><span class="m-ico" aria-hidden="true">🤔</span><span>Was wäre wenn?<small>Neuen Vertrag oder große Ausgabe vorher durchrechnen</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
       </div>
+    </section>
+
+    <section class="panel" aria-labelledby="wifH" data-tab="whatif">
+      <h2 id="wifH">Was wäre wenn?</h2>
+      <p class="hint">Probier aus, was passiert, bevor du etwas einträgst. Hier wird nichts gespeichert.</p>
+      <div class="formbox">
+        <div class="seg wif-seg" role="group" aria-label="Art">
+          <button type="button" data-wif="once" aria-pressed="true">Einmalig kaufen</button>
+          <button type="button" data-wif="monthly" aria-pressed="false">Neuer Vertrag</button>
+        </div>
+        <div class="field"><label for="wifAmount" id="wifLabel">Wie viel kostet es?</label><div class="money big"><input id="wifAmount" inputmode="decimal" placeholder="0,00" autocomplete="off"><span>€</span></div></div>
+      </div>
+      <div class="box" id="wifResult"></div>
     </section>
 
     <section class="panel" aria-labelledby="debtH" data-tab="debts">
@@ -616,6 +639,8 @@ body.is-locked .wrap { visibility: hidden; }
     </section>
 
     <section class="panel" aria-labelledby="anaH" data-tab="stats">
+      <div class="panel-head"><h2>Wochenrückblick</h2></div>
+      <div class="box" id="weekBox"></div>
       <div class="panel-head"><h2 id="anaH">Wofür geht dein Geld weg?</h2><span class="label">seit dem Lohn</span></div>
       <div class="box" id="catStats"></div>
       <div class="panel-head"><h2 id="cmpH">Vergleich mit den letzten Monaten</h2></div>
@@ -664,6 +689,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="newAmount">Betrag</label><div class="money"><input id="newAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
         <div class="field"><label for="newEvery">Wie oft abgebucht</label><select id="newEvery"></select></div>
         <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"><button type="button" class="linklike clear-date" data-clear="newDue">Datum entfernen</button></div>
+        <div class="field"><label for="newEnds">Vertrag läuft aus am</label><input type="date" id="newEnds"><button type="button" class="linklike clear-date" data-clear="newEnds">Datum entfernen</button></div>
         <div class="field wide mode-field" hidden><label for="newMode">Wie abziehen</label><select id="newMode" name="mode"><option value="spread">Jeden Monat einen Teil weglegen</option><option value="full">Alles im Monat der Abbuchung abziehen</option></select></div>
         <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird. Willst du alles im Abbuchungsmonat abziehen, brauchst du das Datum.</span>
         <div class="row-btns wide"><button class="btn" type="submit">Hinzufügen</button><button class="btn ghost" type="button" id="costClose">Fertig</button></div>
@@ -889,6 +915,8 @@ body.is-locked .wrap { visibility: hidden; }
     renderToday(t);
     renderNextMonth(t);
     renderHomeCards(t);
+    renderWeek();
+    renderWhatIf(t);
     renderCalendar();
     renderDebts();
     renderWarn(t);
@@ -1028,6 +1056,60 @@ body.is-locked .wrap { visibility: hidden; }
       </div></details>`;
   }
 
+  // a contract that runs out within the next 30 days (or did so in the last week)
+  const endingSoon = it => { if (!it.ends) return false; const d = (new Date(it.ends + "T12:00:00") - new Date()) / 86400000; return d < 30 && d > -7; };
+  const addMonths = (iso, k) => { const [y, m, d] = iso.split("-").map(Number); return isoDay(new Date(y, m - 1 + k, Math.min(d, new Date(y, m + k, 0).getDate()))); };
+
+  // spending per calendar week (Monday to Sunday), by the day it was bought
+  function weekStats() {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const mon = new Date(now); mon.setDate(now.getDate() - (now.getDay() + 6) % 7);
+    const shift = k => { const d = new Date(mon); d.setDate(d.getDate() + 7 * k); return isoDay(d); };
+    const out = state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && e.cat !== "Korrektur");
+    const range = (a, b) => out.filter(e => e.date >= a && e.date < b);
+    const last = range(shift(-1), shift(0)), before = range(shift(-2), shift(-1));
+    const byCat = {}; last.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + e.amount);
+    const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    const start = state.periodStart ? isoDay(new Date(state.periodStart)) : null;
+    return { from: shift(-1), to: shift(0), last: sum(last, e => e.amount), before: sum(before, e => e.amount), top, partial: !!start && start > shift(-2) };
+  }
+  function weekText(w) {
+    const diff = w.last - w.before;
+    return w.partial ? "Die Woche davor ist nicht ganz vollständig, weil seitdem ein neuer Lohn gestartet wurde."
+      : !w.before ? "Für die Woche davor gibt es keine Einträge."
+      : Math.abs(diff) < 0.01 ? "Genauso viel wie in der Woche davor."
+      : `${fmt(Math.abs(diff))} ${diff < 0 ? "weniger" : "mehr"} als in der Woche davor (${fmt(w.before)}).`;
+  }
+  function renderWeek() {
+    const w = weekStats(), end = new Date(w.to + "T12:00:00"); end.setDate(end.getDate() - 1);
+    $("weekBox").innerHTML = `<small class="hint">${fmtDate(w.from)} bis ${fmtDate(isoDay(end))}</small>`
+      + `<div class="wk-big"><b class="num">${fmt(w.last)}</b><span class="hint">ausgegeben</span></div>`
+      + `<p class="cmp-text">${weekText(w)}</p>`
+      + (w.top ? `<p class="hint">Am meisten für ${SPEND_CATS[w.top[0]]?.[0] || ""} ${esc(w.top[0])}: ${fmt(w.top[1])}</p>` : "");
+  }
+
+  // what-if: try a purchase or a new contract without saving anything
+  let wifKind = "once";
+  function renderWhatIf(t) {
+    const x = parseEuro($("wifAmount").value);
+    const row = (label, a, b) => `<div class="wif-row"><span>${label}</span><span class="num">${fmt(a)}</span><span class="arrow" aria-hidden="true">→</span><span class="num ${b < 0 ? "minus" : ""}">${fmt(b)}</span></div>`;
+    if (!t.income) { $("wifResult").innerHTML = `<p class="hint">Trag zuerst dein Einkommen ein.</p>`; return; }
+    if (Number.isNaN(x) || x <= 0) { $("wifResult").innerHTML = `<p class="hint">Gib oben einen Betrag ein, dann siehst du hier, was sich ändert.</p>`; return; }
+    const days = state.payday ? Math.max(nextPayday(state.payday).days, 1) : 0, n = nextPeriod(t);
+    let html = `<div class="lock-head"><strong>Vorher → nachher</strong></div>`;
+    if (wifKind === "once") {
+      html += row("Noch verfügbar", t.avail, t.avail - x)
+        + (days ? row("Pro Tag bis zum Lohn", Math.max(t.avail, 0) / days, Math.max(t.avail - x, 0) / days) : "")
+        + `<p class="hint">${t.avail - x < 0 ? `Damit wärst du bis zum Lohn ${fmt(x - t.avail)} im Minus.` : `Danach bleiben dir bis zum Lohn noch ${fmt(t.avail - x)}.`}</p>`;
+    } else {
+      html += row("Fixkosten im Monat", t.costs, t.costs + x)
+        + row("Jeden Monat übrig", t.rest, t.rest - x)
+        + row("Nächster Monat verfügbar", n.total, n.total - x)
+        + `<p class="hint">Im Jahr kostet dich das ${fmt(x * 12)}.</p>`;
+    }
+    $("wifResult").innerHTML = html;
+  }
+
   // small cards on the overview: wage day reached, open debts
   function payReached() {
     if (!state.payday || !state.periodStart) return false;
@@ -1037,7 +1119,11 @@ body.is-locked .wrap { visibility: hidden; }
   function renderHomeCards(t) {
     const owed = sum(state.debts.filter(x => x.dir === "owed"), x => x.amount), owe = sum(state.debts.filter(x => x.dir === "owe"), x => x.amount);
     const parts = [owed ? `Dir schuldet man <b class="num">${fmt(owed)}</b>` : "", owe ? `Du schuldest <b class="num">${fmt(owe)}</b>` : ""].filter(Boolean);
-    $("homeCards").innerHTML = (t.income && payReached() ? `<button class="mini-card pay" type="button" data-home="pay"><span class="m-ico" aria-hidden="true">💶</span><span>Ist dein Lohn schon da?<small>Tipp hier, um den neuen Monat zu starten.</small></span><b aria-hidden="true">›</b></button>` : "")
+    const ending = state.items.filter(endingSoon);
+    const wk = new Date().getDay() === 1 || new Date().getDay() === 2 ? weekStats() : null;
+    $("homeCards").innerHTML = (ending.length ? `<button class="mini-card" type="button" data-go="costs"><span class="m-ico" aria-hidden="true">📅</span><span>${ending.length === 1 ? `${esc(ending[0].name)} ${ending[0].ends < today() ? "ist am" : "läuft am"} ${fmtDate(ending[0].ends)} ${ending[0].ends < today() ? "ausgelaufen" : "aus"}` : `${ending.length} Verträge laufen bald aus`}<small>${ending.length > 1 ? ending.map(i => esc(i.name)).join(", ") + " · " : ""}Rechtzeitig kündigen oder wechseln?</small></span><b aria-hidden="true">›</b></button>` : "")
+      + (wk && (wk.last || wk.before) ? `<button class="mini-card" type="button" data-go="stats"><span class="m-ico" aria-hidden="true">🗓️</span><span>Letzte Woche: <strong class="num">${fmt(wk.last)}</strong> ausgegeben<small>${weekText(wk)}</small></span><b aria-hidden="true">›</b></button>` : "")
+      + (t.income && payReached() ? `<button class="mini-card pay" type="button" data-home="pay"><span class="m-ico" aria-hidden="true">💶</span><span>Ist dein Lohn schon da?<small>Tipp hier, um den neuen Monat zu starten.</small></span><b aria-hidden="true">›</b></button>` : "")
       + (parts.length ? `<button class="mini-card" type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small>${parts.join(" · ")}</small></span><b aria-hidden="true">›</b></button>` : "");
     $("menuDebts").textContent = parts.length ? parts.join(" · ").replace(/<[^>]+>/g, "") : "Wer dir was schuldet und wem du was schuldest";
     $("menuIncome").textContent = t.income ? `${fmt(t.income)} im Monat${state.payday ? ", Lohn am " + state.payday + "." : ""}` : "Hauptjob, Minijob, Lohntag";
@@ -1275,7 +1361,8 @@ body.is-locked .wrap { visibility: hidden; }
     const full = isFull(it);
     const per = it.every > 1 ? `<div class="meta num">${fmt(it.amount)} pro Abbuchung, ${full ? "wird im Abbuchungsmonat ganz abgezogen" : `jeden Monat ${fmt(monthly(it))} weglegen`}</div>` : "";
     const due = nextDue(it);
-    const when = due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "";
+    const when = (due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "")
+      + (it.ends ? `<div class="meta num${endingSoon(it) ? " warn-text" : ""}">${it.ends < today() ? "Ausgelaufen am" : "Läuft aus am"} ${fmtDate(it.ends, true)}</div>` : "");
     const missing = it.mode === "full" && it.every > 1 && !it.due ? `<div class="meta warn-text">Für „ganz im Abbuchungsmonat“ fehlt das Datum. Bis dahin wird anteilig gerechnet.</div>` : "";
     return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
       <span class="num">${fmt(costNow(it))}</span>
@@ -1289,6 +1376,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="ce-amt">Betrag</label><div class="money"><input id="ce-amt" name="amount" inputmode="decimal" value="${toField(it.amount)}" required><span>€</span></div></div>
         <div class="field"><label for="ce-int">Wie oft abgebucht</label><select id="ce-int" name="every">${everyOptions(it.every)}</select></div>
         <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"><button type="button" class="linklike clear-date" data-clear="ce-due">Datum entfernen</button></div>
+        <div class="field"><label for="ce-ends">Vertrag läuft aus am</label><input type="date" id="ce-ends" name="ends" value="${it.ends || ""}"><button type="button" class="linklike clear-date" data-clear="ce-ends">Datum entfernen</button></div>
         <div class="field wide mode-field"${it.every > 1 ? "" : " hidden"}><label for="ce-mode">Wie abziehen</label><select id="ce-mode" name="mode"><option value="spread"${it.mode !== "full" ? " selected" : ""}>Jeden Monat einen Teil weglegen</option><option value="full"${it.mode === "full" ? " selected" : ""}>Alles im Monat der Abbuchung abziehen</option></select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
@@ -1321,7 +1409,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
       id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
       amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1), mode: i.mode === "full" ? "full" : "spread",
-      due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null
+      due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null, ends: /^\d{4}-\d{2}-\d{2}$/.test(i.ends) ? i.ends : null
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
@@ -1414,16 +1502,16 @@ body.is-locked .wrap { visibility: hidden; }
   // --- events: spending ---
   function setKind(kind) {
     spendKind = kind;
-    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
+    document.querySelectorAll(".seg button[data-kind]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
     const isIn = kind === "in";
     $("spendNameLabel").textContent = isIn ? "Woher" : "Wofür";
     $("spendName").placeholder = isIn ? "z. B. Aushelfen bei Manuel" : "z. B. Tanken";
     $("spendBtn").textContent = isIn ? "Hinzufügen" : "Abziehen";
     $("spendBtn").classList.toggle("good", isIn);
     $("catPick").hidden = isIn;
-    $("laterWrap").hidden = isIn; if (isIn) { $("spendLater").checked = false; $("payOnField").hidden = true; }
+    $("laterWrap").hidden = isIn; if (isIn) { $("spendLater").checked = false; $("payOnField").hidden = $("ratesField").hidden = true; $("spendRates").value = "1"; ratesHint(); }
   }
-  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
+  document.querySelectorAll(".seg button[data-kind]").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
   function renderCatPick() {
     $("catPick").innerHTML = PICK_CATS.map(c => `<button type="button" data-cat="${c}" aria-pressed="${c === spendCat}"><span aria-hidden="true">${SPEND_CATS[c][0]}</span> ${c}</button>`).join("");
   }
@@ -1444,6 +1532,15 @@ body.is-locked .wrap { visibility: hidden; }
     const input = $(b.dataset.clear); if (!input) return;
     input.value = ""; input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+
+  // --- events: what-if ---
+  document.querySelectorAll(".wif-seg button").forEach(b => b.addEventListener("click", () => {
+    wifKind = b.dataset.wif;
+    document.querySelectorAll(".wif-seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("wifLabel").textContent = wifKind === "once" ? "Wie viel kostet es?" : "Wie viel kostet der Vertrag im Monat?";
+    renderWhatIf(totals());
+  }));
+  $("wifAmount").addEventListener("input", () => renderWhatIf(totals()));
 
   // --- events: calendar ---
   $("calPrev").addEventListener("click", () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderCalendar(); });
@@ -1482,7 +1579,7 @@ body.is-locked .wrap { visibility: hidden; }
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -1507,8 +1604,17 @@ body.is-locked .wrap { visibility: hidden; }
   }));
   $("spendClose").addEventListener("click", () => showSpendForm(false));
   $("spendDate").value = today();
+  const ratesHint = () => {
+    const n = Number($("spendRates").value), amount = parseEuro($("spendAmount").value);
+    $("payOnLabel").textContent = n > 1 ? "Erste Rate am" : "Abgebucht am";
+    $("ratesHint").hidden = n <= 1;
+    $("ratesHint").textContent = n > 1 ? (amount > 0 ? `${n} Raten zu je ca. ${fmt(round2(amount / n))}, jeden Monat eine. ` : "") + "Jede Rate wird erst in ihrem Monat abgezogen." : "";
+  };
+  ["spendRates", "spendAmount"].forEach(id => $(id).addEventListener("input", ratesHint));
+  $("spendRates").addEventListener("change", ratesHint);
   $("spendLater").addEventListener("change", () => {
-    $("payOnField").hidden = !$("spendLater").checked;
+    $("payOnField").hidden = $("ratesField").hidden = !$("spendLater").checked;
+    if (!$("spendLater").checked) { $("spendRates").value = "1"; ratesHint(); }
     if ($("spendLater").checked && !$("spendPayOn").value) {
       const d = new Date(($("spendDate").value || today()) + "T12:00:00"); d.setDate(d.getDate() + 30);
       $("spendPayOn").value = isoDay(d);
@@ -1520,9 +1626,16 @@ body.is-locked .wrap { visibility: hidden; }
     if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
     const before = new Set(warnings(totals()).map(([k]) => k));
     const date = $("spendDate").value || today();
-    const payOn = spendKind !== "in" && $("spendLater").checked && $("spendPayOn").value > date ? $("spendPayOn").value : null;
-    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date, cat: spendKind === "in" ? "Sonstiges" : spendCat, payOn });
-    $("spendLater").checked = false; $("payOnField").hidden = true;
+    const later = spendKind !== "in" && $("spendLater").checked && $("spendPayOn").value;
+    const rates = later ? Number($("spendRates").value) || 1 : 1, name = $("spendName").value.trim();
+    // installments: one entry per month, the last one takes the rounding difference
+    const part = round2(amount / rates);
+    for (let k = 0; k < rates; k++) {
+      const due = later ? addMonths($("spendPayOn").value, k) : null;
+      state.expenses.push({ id: uid(), kind: spendKind, name: rates > 1 ? `${name} (Rate ${k + 1}/${rates})` : name, amount: k === rates - 1 ? round2(amount - part * (rates - 1)) : part,
+        date, cat: spendKind === "in" ? "Sonstiges" : spendCat, payOn: due && due > date ? due : null });
+    }
+    $("spendLater").checked = false; $("payOnField").hidden = $("ratesField").hidden = true; $("spendRates").value = "1"; ratesHint();
     const fresh = warnings(totals()).filter(([k]) => !before.has(k));
     if (fresh.length) toast(fresh.map(([, text]) => `<p>⚠️ ${text}</p>`).join(""));
     $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
@@ -1619,8 +1732,8 @@ body.is-locked .wrap { visibility: hidden; }
     e.preventDefault();
     const amount = parseEuro($("newAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("newAmount").focus(); return; }
-    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, every: clampEvery($("newEvery").value), due: $("newDue").value || null, mode: $("newMode").value === "full" ? "full" : "spread" });
-    $("newName").value = ""; $("newAmount").value = ""; $("newEvery").value = "1"; $("newDue").value = ""; $("newMode").value = "spread"; showModeField($("costForm"));
+    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, every: clampEvery($("newEvery").value), due: $("newDue").value || null, ends: $("newEnds").value || null, mode: $("newMode").value === "full" ? "full" : "spread" });
+    $("newName").value = ""; $("newAmount").value = ""; $("newEvery").value = "1"; $("newDue").value = ""; $("newEnds").value = ""; $("newMode").value = "spread"; showModeField($("costForm"));
     $("newName").focus();
     scheduleSave();
   });
@@ -1635,7 +1748,7 @@ body.is-locked .wrap { visibility: hidden; }
     const f = e.target, it = state.items.find(i => i.id === f.dataset.form); if (!it) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
-    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, mode: f.mode.value === "full" ? "full" : "spread" });
+    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, ends: f.ends.value || null, mode: f.mode.value === "full" ? "full" : "spread" });
     editingCost = null; scheduleSave();
   });
 
