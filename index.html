@@ -272,7 +272,7 @@ input[type="text"], input[type="date"], input[type="number"], input[type="email"
 .group .item:last-child { border-bottom: 0; }
 .total-line { padding: 6px 2px 0; }
 .pill { background: var(--accent-soft); color: var(--good); }
-.foot { display: grid; gap: 10px; }
+.foot { display: grid; gap: 10px; justify-content: stretch; }
 .foot #resetBtn { width: 100%; min-height: 52px; font-size: 1rem; }
 .foot .hint:empty { display: none; }
 .confirm, .notice { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
@@ -282,6 +282,45 @@ th, td { border-bottom-color: var(--line); }
 .status::before { background: var(--muted); }
 .auth .panel { background: var(--surface); border-radius: 18px; padding: 20px; }
 @media (min-width: 821px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* daily budget, spending categories, month comparison */
+.today:empty { display: none; }
+.today-card { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; border: 1px solid var(--accent-soft); }
+.today-card small { color: var(--muted); font-size: .8rem; display: block; }
+.today-card p { font-size: .88rem; }
+.today-card > .btn { justify-self: start; }
+.today-top { display: flex; justify-content: space-between; align-items: center; }
+.today-top b { font-size: 1.7rem; font-weight: 800; color: var(--good); letter-spacing: -.02em; }
+.today-card.over .today-top b { color: var(--bad); }
+.today-ico { font-size: 1.6rem; }
+.meter { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 4px; background: var(--good); }
+.today-card .meter span { background: var(--spent); }
+.today-card.over .meter span { background: var(--bad); }
+.cat-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-pick::-webkit-scrollbar { display: none; }
+.cat-pick button { flex: none; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 99px; padding: 7px 12px; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.cat-pick button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cat-pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.item.spend { grid-template-columns: 38px minmax(0, 1fr) auto auto; }
+.sp-ico { width: 38px; height: 38px; border-radius: 12px; background: var(--surface); display: grid; place-items: center; font-size: 1.1rem; }
+.box { background: var(--surface); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }
+.stat-row { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 10px; align-items: center; }
+.stat-row .sp-ico { background: var(--surface-2); }
+.stat-main { display: grid; gap: 6px; min-width: 0; }
+.stat-line { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: .92rem; }
+.stat-line small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.chart { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; height: 170px; align-items: end; }
+.col { display: grid; grid-template-rows: auto 1fr auto; height: 100%; gap: 4px; text-align: center; min-width: 0; }
+.col-val { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+.col-bar { display: flex; align-items: flex-end; }
+.col-bar span { width: 100%; border-radius: 8px 8px 4px 4px; background: var(--ring-base); }
+.col.now .col-bar span { background: var(--good); }
+.col.now .col-val { color: var(--ink); font-weight: 700; }
+.col-lbl { font-size: .72rem; color: var(--muted); }
+.col.now .col-lbl { color: var(--good); font-weight: 700; }
+.cmp-text { font-size: .88rem; color: #b9c6bf; }
+.cmp-now { display: flex; justify-content: space-between; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .ring circle { transition: none; } }
 </style>
 </head>
@@ -337,6 +376,7 @@ th, td { border-bottom-color: var(--line); }
     </div>
     <div class="perday" id="perDay"></div>
     <div class="ring-keys" id="legend"></div>
+    <div class="today" id="today"></div>
     <div class="hero-figure">
       <button class="linklike" type="button" id="fixBtn">Betrag stimmt nicht? Korrigieren</button>
       <form class="confirm" id="fixForm" hidden autocomplete="off">
@@ -386,6 +426,7 @@ th, td { border-bottom-color: var(--line); }
           <button type="button" data-kind="out" aria-pressed="true">− Ausgabe</button>
           <button type="button" data-kind="in" aria-pressed="false">+ Einzahlung</button>
         </div>
+        <div class="cat-pick" id="catPick" role="group" aria-label="Kategorie"></div>
         <div class="fields">
           <div class="field"><label for="spendAmount">Betrag</label><div class="money big"><input id="spendAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
           <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
@@ -409,6 +450,13 @@ th, td { border-bottom-color: var(--line); }
       </div>
     </section>
 
+    <section class="panel" aria-labelledby="anaH">
+      <div class="panel-head"><h2 id="anaH">Wofür geht dein Geld weg?</h2><span class="label">seit dem Lohn</span></div>
+      <div class="box" id="catStats"></div>
+      <div class="panel-head"><h2 id="cmpH">Vergleich mit den letzten Monaten</h2></div>
+      <div class="box" id="compare"></div>
+    </section>
+
     <section class="panel" aria-labelledby="incH">
       <h2 id="incH">Einkommen</h2>
       <div class="field">
@@ -423,7 +471,7 @@ th, td { border-bottom-color: var(--line); }
       <div class="field">
         <label for="payday">Lohn kommt am (Tag im Monat)</label>
         <input type="number" id="payday" min="1" max="31" inputmode="numeric" placeholder="z. B. 28">
-        <span class="hint">Optional. Dann siehst du oben, wie viel du pro Tag noch ausgeben kannst.</span>
+        <span class="hint">Dann siehst du oben dein Tagesbudget: wie viel du heute noch ausgeben kannst.</span>
       </div>
     </section>
   </div>
@@ -489,6 +537,10 @@ th, td { border-bottom-color: var(--line); }
   const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Sonstiges: "--c7" };
   const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Freizeit: "🎉", Sonstiges: "📦" };
   const DEFAULT_CATS = Object.keys(CAT_COLORS);
+  // everyday spending categories; "Korrektur" and "Übertrag" are set by the page itself
+  const SPEND_CATS = { Essen: ["🍔", "--c3"], Einkaufen: ["🛒", "--c1"], Tanken: ["⛽", "--c5"], Freizeit: ["🎉", "--c4"], Kleidung: ["👕", "--c6"], Sonstiges: ["📦", "--c7"], Korrektur: ["✏️", "--c8"], "Übertrag": ["↩️", "--c7"] };
+  const PICK_CATS = ["Essen", "Einkaufen", "Tanken", "Freizeit", "Kleidung", "Sonstiges"];
+  const CARRY_CAT = "Übertrag";
   const EXTRA_COLORS = ["--c5", "--c1", "--c4", "--c6", "--c3", "--c8"];
   const SAVING_CAT = "Sparen";
   const INTERVALS = { monthly: { div: 1, label: "monatlich", short: "" }, quarterly: { div: 3, label: "vierteljährlich", short: "vierteljährl." }, yearly: { div: 12, label: "jährlich", short: "jährlich" } };
@@ -497,7 +549,7 @@ th, td { border-bottom-color: var(--line); }
   const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], periodStart: null, history: [] });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
-  let editingCost = null, editingSpend = null, spendKind = "out", pendingImport = null;
+  let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
 
   // --- helpers ---
   const $ = id => document.getElementById(id);
@@ -563,6 +615,8 @@ th, td { border-bottom-color: var(--line); }
     renderHero(t);
     renderIncome(t);
     renderSpending(t);
+    renderToday(t);
+    renderStats(t);
     renderLedger(t);
     renderHistory();
   }
@@ -581,11 +635,10 @@ th, td { border-bottom-color: var(--line); }
       $("perDay").textContent = "Trag unten dein Einkommen ein, dann rechnet die Seite los.";
     } else if (state.payday) {
       const p = nextPayday(state.payday);
-      const per = t.avail > 0 ? t.avail / p.days : 0;
       const days = `${p.days} ${p.days === 1 ? "Tag" : "Tage"}`;
       $("perDay").innerHTML = t.avail < 0
         ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`
-        : `Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}, also etwa <b>${fmt(per)}</b> pro Tag.`;
+        : `Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`;
     } else {
       $("perDay").innerHTML = t.avail < 0 ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span>` : "";
     }
@@ -623,6 +676,65 @@ th, td { border-bottom-color: var(--line); }
     }
   }
 
+  // everyday spending of the current period by category (carried-over debt is not spending)
+  function spendByCat() {
+    const out = {};
+    state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT).forEach(e => { out[e.cat] = round2((out[e.cat] || 0) + e.amount); });
+    return out;
+  }
+  const everyday = h => h.byCat ? sum(Object.entries(h.byCat).filter(([k]) => k !== CARRY_CAT), ([, v]) => v) : h.spent;
+
+  function renderToday(t) {
+    const el = $("today");
+    if (!t.income) { el.innerHTML = ""; return; }
+    if (!state.payday) {
+      el.innerHTML = `<div class="today-card"><div><small>Tagesbudget</small><p>Trag ein, an welchem Tag dein Lohn kommt. Dann siehst du hier, wie viel du heute noch ausgeben kannst.</p></div><button class="btn dark small" type="button" data-goto="payday">Lohntag eintragen</button></div>`;
+      return;
+    }
+    const p = nextPayday(state.payday);
+    const spentToday = sum(state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && e.date === today()), e => e.amount);
+    const budget = Math.max(t.avail + spentToday, 0) / Math.max(p.days, 1);
+    const left = budget - spentToday;
+    const used = budget > 0 ? Math.min(spentToday / budget, 1) : 1;
+    const note = budget <= 0 ? "Gerade ist kein Geld mehr übrig bis zum Lohn."
+      : left < 0 ? `Heute ${fmt(-left)} über dem Budget. Die nächsten Tage wird es dafür etwas weniger.`
+      : `von ${fmt(budget)} für heute, damit es bis zum Lohn reicht`;
+    el.innerHTML = `<div class="today-card${left < 0 || budget <= 0 ? " over" : ""}">
+      <div class="today-top"><div><small>Heute kannst du noch ausgeben</small><b class="num">${fmt(Math.max(left, 0))}</b></div><span class="today-ico" aria-hidden="true">☀️</span></div>
+      <div class="meter" role="img" aria-label="${Math.round(used * 100)} % vom Tagesbudget verbraucht"><span style="width:${used * 100}%"></span></div>
+      <p class="hint">${note}</p></div>`;
+  }
+
+  function renderStats(t) {
+    const by = spendByCat();
+    const rows = Object.entries(by).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const total = sum(rows, ([, v]) => v);
+    $("catStats").innerHTML = !rows.length
+      ? `<p class="hint">Sobald du Ausgaben einträgst, siehst du hier, wofür das meiste Geld weggeht.</p>`
+      : rows.map(([cat, v]) => `<div class="stat-row"><span class="sp-ico" aria-hidden="true">${SPEND_CATS[cat][0]}</span>
+          <div class="stat-main"><div class="stat-line"><span>${esc(cat)}</span><span class="num">${fmt(v)} <small>${Math.round((v / total) * 100)} %</small></span></div>
+          <div class="meter"><span style="width:${(v / rows[0][1]) * 100}%;background:var(${SPEND_CATS[cat][1]})"></span></div></div></div>`).join("");
+
+    // periods between paydays, oldest first, the running one last
+    const past = state.history.filter(h => h.start && (h.spent > 0 || h.byCat)).slice(0, 5).reverse()
+      .map(h => ({ label: fmtDate(h.start).slice(0, 6), value: everyday(h), title: `${fmtDate(h.start)} – ${fmtDate(h.end, true)}` }));
+    const now = { label: "Jetzt", value: sum(Object.values(by), v => v), title: "Seit dem letzten Lohn", current: true };
+    if (!past.length) {
+      $("compare").innerHTML = `<p class="hint">Wenn du das nächste Mal auf „Neuer Lohn ist da“ tippst, wird dieser Monat gespeichert. Danach siehst du hier, ob du mehr oder weniger ausgibst als vorher.</p>`
+        + `<div class="cmp-now"><span>Bisher in diesem Monat</span><b class="num">${fmt(now.value)}</b></div>`;
+      return;
+    }
+    const bars = [...past, now], max = Math.max(...bars.map(b => b.value), 1);
+    const last = past[past.length - 1].value, diff = now.value - last;
+    const avg = sum(past, b => b.value) / past.length;
+    const verdict = diff <= 0
+      ? `Bisher <b class="plus">${fmt(-diff)} weniger</b> als im ganzen letzten Monat.`
+      : `Schon <b class="minus">${fmt(diff)} mehr</b> als im ganzen letzten Monat.`;
+    $("compare").innerHTML = `<div class="chart" role="img" aria-label="Ausgaben pro Monat">${bars.map(b => `<div class="col${b.current ? " now" : ""}" title="${esc(b.title)}">
+        <span class="col-val num">${Math.round(b.value)} €</span><div class="col-bar"><span style="height:${Math.max((b.value / max) * 100, 2)}%"></span></div><span class="col-lbl">${esc(b.label)}</span></div>`).join("")}</div>
+      <p class="cmp-text">${verdict} Im Schnitt gibst du <b class="num">${fmt(avg)}</b> pro Monat aus (ohne Fixkosten).</p>`;
+  }
+
   function renderIncome(t) {
     $("incomeTotal").textContent = fmt(t.income);
     if (document.activeElement !== $("mainIncome")) $("mainIncome").value = toField(state.mainIncome);
@@ -648,7 +760,8 @@ th, td { border-bottom-color: var(--line); }
   }
   function spendRow(e) {
     const inn = e.kind === "in";
-    return `<div class="item spend"><span class="name">${esc(e.name)}<span class="meta num">${fmtDate(e.date)}</span></span>
+    const ico = inn ? "💶" : SPEND_CATS[e.cat]?.[0] || "📦";
+    return `<div class="item spend"><span class="sp-ico" aria-hidden="true">${ico}</span><span class="name">${esc(e.name)}<span class="meta num">${fmtDate(e.date)}${inn ? "" : " · " + esc(e.cat)}</span></span>
       <span class="num ${inn ? "plus" : ""}">${inn ? "+" : "−"} ${fmt(e.amount)}</span>
       <span class="actions"><button class="icon" type="button" data-spend-edit="${e.id}" aria-label="${esc(e.name)} ändern">✎</button><button class="icon" type="button" data-spend-del="${e.id}" aria-label="${esc(e.name)} löschen">✕</button></span></div>`;
   }
@@ -659,6 +772,7 @@ th, td { border-bottom-color: var(--line); }
         <div class="field"><label for="se-name">${e.kind === "in" ? "Woher" : "Wofür"}</label><input type="text" id="se-name" name="name" value="${esc(e.name)}" required></div>
         <div class="field"><label for="se-kind">Art</label><select id="se-kind" name="kind"><option value="out"${e.kind !== "in" ? " selected" : ""}>Ausgabe</option><option value="in"${e.kind === "in" ? " selected" : ""}>Einzahlung</option></select></div>
         <div class="field"><label for="se-date">Datum</label><input type="date" id="se-date" name="date" value="${e.date}" required></div>
+        <div class="field wide"><label for="se-cat">Kategorie (bei Ausgaben)</label><select id="se-cat" name="cat">${Object.keys(SPEND_CATS).map(c => `<option${c === e.cat ? " selected" : ""}>${c}</option>`).join("")}</select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
   }
@@ -727,12 +841,14 @@ th, td { border-bottom-color: var(--line); }
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
-      date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today()
+      date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today(),
+      cat: SPEND_CATS[e.cat] ? e.cat : e.name === "Korrektur" ? "Korrektur" : e.name === "Minus aus dem Vormonat" ? CARRY_CAT : "Sonstiges"
     })) : [];
     s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
     s.history = Array.isArray(d.history) ? d.history.filter(h => h && h.end).slice(0, 24).map(h => ({
       start: typeof h.start === "string" ? h.start : null, end: String(h.end),
-      spent: Number(h.spent) || 0, added: Number(h.added) || 0, carried: Number(h.carried) || 0
+      spent: Number(h.spent) || 0, added: Number(h.added) || 0, carried: Number(h.carried) || 0,
+      ...(h.byCat && typeof h.byCat === "object" ? { byCat: Object.fromEntries(Object.entries(h.byCat).filter(([k]) => SPEND_CATS[k]).map(([k, v]) => [k, Number(v) || 0])) } : {})
     })) : [];
     return s;
   }
@@ -812,8 +928,22 @@ th, td { border-bottom-color: var(--line); }
     $("spendName").placeholder = isIn ? "z. B. Aushelfen bei Manuel" : "z. B. Tanken";
     $("spendBtn").textContent = isIn ? "Hinzufügen" : "Abziehen";
     $("spendBtn").classList.toggle("good", isIn);
+    $("catPick").hidden = isIn;
   }
   document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
+  function renderCatPick() {
+    $("catPick").innerHTML = PICK_CATS.map(c => `<button type="button" data-cat="${c}" aria-pressed="${c === spendCat}"><span aria-hidden="true">${SPEND_CATS[c][0]}</span> ${c}</button>`).join("");
+  }
+  renderCatPick();
+  $("catPick").addEventListener("click", e => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    spendCat = b.dataset.cat; renderCatPick();
+  });
+  $("today").addEventListener("click", e => {
+    if (!e.target.closest("[data-goto]")) return;
+    $("payday").scrollIntoView({ behavior: "smooth", block: "center" });
+    $("payday").focus({ preventScroll: true });
+  });
   document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => {
     setKind(b.dataset.quick);
     $("spendForm").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -824,7 +954,7 @@ th, td { border-bottom-color: var(--line); }
     e.preventDefault();
     const amount = parseEuro($("spendAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
-    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date: $("spendDate").value || today() });
+    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date: $("spendDate").value || today(), cat: spendKind === "in" ? "Sonstiges" : spendCat });
     $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
     $("spendAmount").focus();
     scheduleSave();
@@ -840,7 +970,7 @@ th, td { border-bottom-color: var(--line); }
     const f = e.target, x = state.expenses.find(i => i.id === f.dataset.spendForm); if (!x) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
-    Object.assign(x, { amount, name: f.elements.name.value.trim(), kind: f.kind.value === "in" ? "in" : "out", date: f.date.value || x.date });
+    Object.assign(x, { amount, name: f.elements.name.value.trim(), kind: f.kind.value === "in" ? "in" : "out", date: f.date.value || x.date, cat: SPEND_CATS[f.cat.value] ? f.cat.value : "Sonstiges" });
     editingSpend = null; scheduleSave();
   });
 
@@ -850,10 +980,10 @@ th, td { border-bottom-color: var(--line); }
   $("resetYes").addEventListener("click", () => {
     const t = totals(), now = new Date().toISOString();
     const carried = $("carryOver").checked ? round2(t.avail) : 0;
-    state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried }, ...state.history].slice(0, 24);
+    state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat() }, ...state.history].slice(0, 24);
     state.expenses = !carried ? []
       : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today() }]
-      : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today() }];
+      : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }];
     state.periodStart = now;
     editingSpend = null;
     showReset(false);
@@ -881,7 +1011,7 @@ th, td { border-bottom-color: var(--line); }
     const diff = round2(target - totals().avail);
     closeFix();
     if (!diff) return;
-    state.expenses.push({ id: uid(), kind: diff > 0 ? "in" : "out", name: "Korrektur", amount: Math.abs(diff), date: today() });
+    state.expenses.push({ id: uid(), kind: diff > 0 ? "in" : "out", name: "Korrektur", amount: Math.abs(diff), date: today(), cat: "Korrektur" });
     scheduleSave();
   });
 
