@@ -329,6 +329,9 @@ th, td { border-bottom-color: var(--line); }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .warn-text { color: var(--spent); }
+.later-check { grid-column: 1 / -1; font-size: .88rem; }
+.later-tag { color: var(--c1); }
+.later-box .list .item:last-child { border-bottom: 0; }
 .due-row { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 8px; font-size: .92rem; }
 .due-date { color: var(--good); font-weight: 700; }
 .due-name { overflow-wrap: anywhere; }
@@ -483,9 +486,12 @@ body.is-locked .wrap { visibility: hidden; }
           <div class="field"><label for="spendAmount">Betrag</label><div class="money big"><input id="spendAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
           <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
           <div class="field wide"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
+          <label class="check wide later-check" id="laterWrap"><input type="checkbox" id="spendLater"><span>Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“</span></label>
+          <div class="field wide" id="payOnField" hidden><label for="spendPayOn">Abgebucht am</label><input type="date" id="spendPayOn"></div>
           <button class="btn" type="submit" id="spendBtn">Abziehen</button>
         </div>
       </form>
+      <div class="box later-box" id="laterList" hidden></div>
       <div class="list" id="spendList"></div>
       <div class="foot" id="spendFoot">
         <span class="hint" id="spendSum"></span>
@@ -493,7 +499,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
       <div class="confirm" id="resetConfirm" hidden>
         <strong>Neuen Zeitraum starten?</strong>
-        <span>Die Einträge oben werden gelöscht. Im Verlauf bleibt gespeichert, wie viel du ausgegeben hast.</span>
+        <span>Die Einträge oben werden gelöscht, nur „Kommt noch“ bleibt stehen. Im Verlauf bleibt gespeichert, wie viel du ausgegeben hast.</span>
         <label class="check"><input type="checkbox" id="carryOver" checked><span id="carryText">Übriges Geld mitnehmen</span></label>
         <div class="row-btns">
           <button class="btn" type="button" id="resetYes">Neuen Zeitraum starten</button>
@@ -715,6 +721,10 @@ body.is-locked .wrap { visibility: hidden; }
     return d && d < w.end ? d : null;
   }
   const costNow = it => isFull(it) ? (dueThisPeriod(it) ? it.amount : 0) : monthly(it);
+  // spending paid later (e.g. PayPal in 30 days) only counts from its debit day on
+  const isLater = e => e.kind !== "in" && !!e.payOn && e.payOn > today();
+  const active = () => state.expenses.filter(e => !isLater(e));
+  const payDay = e => e.payOn || e.date;
   const uid = () => Math.random().toString(36).slice(2, 10);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
@@ -740,8 +750,8 @@ body.is-locked .wrap { visibility: hidden; }
     const income = (state.mainIncome || 0) + (state.minijob || 0);
     const costs = sum(state.items, costNow);
     const savings = sum(state.items.filter(i => i.category === SAVING_CAT), costNow);
-    const spent = sum(state.expenses.filter(e => e.kind !== "in"), e => e.amount);
-    const added = sum(state.expenses.filter(e => e.kind === "in"), e => e.amount);
+    const spent = sum(active().filter(e => e.kind !== "in"), e => e.amount);
+    const added = sum(active().filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
     return { income, costs, savings, spent, added, rest, avail: rest + added - spent };
   }
@@ -832,17 +842,17 @@ body.is-locked .wrap { visibility: hidden; }
   // everyday spending of the current period by category (carried-over debt is not spending)
   function spendByCat() {
     const out = {};
-    state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT).forEach(e => { out[e.cat] = round2((out[e.cat] || 0) + e.amount); });
+    active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT).forEach(e => { out[e.cat] = round2((out[e.cat] || 0) + e.amount); });
     return out;
   }
   // money that came in on top of the wage (carried-over rest from last month is not new money)
-  const extraIn = () => sum(state.expenses.filter(e => e.kind === "in" && e.cat !== CARRY_CAT), e => e.amount);
+  const extraIn = () => sum(active().filter(e => e.kind === "in" && e.cat !== CARRY_CAT), e => e.amount);
   const everyday = h => h.byCat ? sum(Object.entries(h.byCat).filter(([k]) => k !== CARRY_CAT), ([, v]) => v) : h.spent;
 
   function dayBudget(t) {
     if (!state.payday || !t.income) return null;
     const p = nextPayday(state.payday);
-    const spentToday = sum(state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && e.date === today()), e => e.amount);
+    const spentToday = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) === today()), e => e.amount);
     const budget = Math.max(t.avail + spentToday, 0) / Math.max(p.days, 1);
     return { budget, left: budget - spentToday, spentToday };
   }
@@ -963,7 +973,12 @@ body.is-locked .wrap { visibility: hidden; }
 
   function renderSpending(t) {
     $("spendSince").textContent = state.periodStart ? "seit " + fmtDate(state.periodStart, true) : "";
-    const list = [...state.expenses].sort((a, b) => b.date.localeCompare(a.date));
+    const later = state.expenses.filter(isLater).sort((a, b) => a.payOn.localeCompare(b.payOn));
+    $("laterList").hidden = !later.length;
+    $("laterList").innerHTML = `<div class="lock-head"><strong>Kommt noch</strong><span class="label">wird erst am Abbuchungstag abgezogen</span></div>`
+      + `<div class="list">${later.map(e => e.id === editingSpend ? spendEditor(e) : spendRow(e)).join("")}</div>`
+      + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(later, e => e.amount))}</span></div>`;
+    const list = active().sort((a, b) => b.date.localeCompare(a.date));
     if (!list.length) {
       $("spendList").innerHTML = `<div class="empty"><strong>Noch nichts eingetragen</strong>Trag hier ein, was du zwischendurch ausgibst, zum Beispiel Tanken oder Einkaufen. Geld, das zusätzlich reinkommt, trägst du als Einzahlung ein.</div>`;
     } else {
@@ -980,7 +995,7 @@ body.is-locked .wrap { visibility: hidden; }
   function spendRow(e) {
     const inn = e.kind === "in";
     const ico = inn ? "💶" : SPEND_CATS[e.cat]?.[0] || "📦";
-    return `<div class="item spend"><span class="sp-ico" aria-hidden="true">${ico}</span><span class="name">${esc(e.name)}<span class="meta num">${fmtDate(e.date)}${inn ? "" : " · " + esc(e.cat)}</span></span>
+    return `<div class="item spend"><span class="sp-ico" aria-hidden="true">${ico}</span><span class="name">${esc(e.name)}<span class="meta num">${fmtDate(e.date)}${inn ? "" : " · " + esc(e.cat)}${e.payOn ? ` · <span class="later-tag">abgebucht am ${fmtDate(e.payOn)}</span>` : ""}</span></span>
       <span class="num ${inn ? "plus" : ""}">${inn ? "+" : "−"} ${fmt(e.amount)}</span>
       <span class="actions"><button class="icon" type="button" data-spend-edit="${e.id}" aria-label="${esc(e.name)} ändern">✎</button><button class="icon" type="button" data-spend-del="${e.id}" aria-label="${esc(e.name)} löschen">✕</button></span></div>`;
   }
@@ -991,6 +1006,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="se-name">${e.kind === "in" ? "Woher" : "Wofür"}</label><input type="text" id="se-name" name="name" value="${esc(e.name)}" required></div>
         <div class="field"><label for="se-kind">Art</label><select id="se-kind" name="kind"><option value="out"${e.kind !== "in" ? " selected" : ""}>Ausgabe</option><option value="in"${e.kind === "in" ? " selected" : ""}>Einzahlung</option></select></div>
         <div class="field"><label for="se-date">Datum</label><input type="date" id="se-date" name="date" value="${e.date}" required></div>
+        <div class="field wide"><label for="se-pay">Abgebucht am (leer = sofort)</label><input type="date" id="se-pay" name="payOn" value="${e.payOn || ""}"></div>
         <div class="field wide"><label for="se-cat">Kategorie (bei Ausgaben)</label><select id="se-cat" name="cat">${Object.keys(SPEND_CATS).map(c => `<option${c === e.cat ? " selected" : ""}>${c}</option>`).join("")}</select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
@@ -1071,6 +1087,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
       date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today(),
+      payOn: e.kind !== "in" && /^\d{4}-\d{2}-\d{2}$/.test(e.payOn) ? e.payOn : null,
       cat: SPEND_CATS[e.cat] ? e.cat : e.name === "Korrektur" ? "Korrektur" : e.name === "Minus aus dem Vormonat" || e.name === "Übrig vom letzten Lohn" ? CARRY_CAT : "Sonstiges"
     })) : [];
     s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
@@ -1161,6 +1178,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("spendBtn").textContent = isIn ? "Hinzufügen" : "Abziehen";
     $("spendBtn").classList.toggle("good", isIn);
     $("catPick").hidden = isIn;
+    $("laterWrap").hidden = isIn; if (isIn) { $("spendLater").checked = false; $("payOnField").hidden = true; }
   }
   document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
   function renderCatPick() {
@@ -1198,32 +1216,44 @@ body.is-locked .wrap { visibility: hidden; }
     $("spendAmount").focus({ preventScroll: true });
   }));
   $("spendDate").value = today();
+  $("spendLater").addEventListener("change", () => {
+    $("payOnField").hidden = !$("spendLater").checked;
+    if ($("spendLater").checked && !$("spendPayOn").value) {
+      const d = new Date(($("spendDate").value || today()) + "T12:00:00"); d.setDate(d.getDate() + 30);
+      $("spendPayOn").value = isoDay(d);
+    }
+  });
   $("spendForm").addEventListener("submit", e => {
     e.preventDefault();
     const amount = parseEuro($("spendAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
     const before = new Set(warnings(totals()).map(([k]) => k));
-    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date: $("spendDate").value || today(), cat: spendKind === "in" ? "Sonstiges" : spendCat });
+    const date = $("spendDate").value || today();
+    const payOn = spendKind !== "in" && $("spendLater").checked && $("spendPayOn").value > date ? $("spendPayOn").value : null;
+    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date, cat: spendKind === "in" ? "Sonstiges" : spendCat, payOn });
+    $("spendLater").checked = false; $("payOnField").hidden = true;
     const fresh = warnings(totals()).filter(([k]) => !before.has(k));
     if (fresh.length) toast(fresh.map(([, text]) => `<p>⚠️ ${text}</p>`).join(""));
     $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
     $("spendAmount").focus();
     scheduleSave();
   });
-  $("spendList").addEventListener("click", e => {
+  const onSpendClick = e => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.spendDel) { state.expenses = state.expenses.filter(x => x.id !== b.dataset.spendDel); scheduleSave(); }
     else if (b.dataset.spendEdit) { editingSpend = b.dataset.spendEdit; render(); }
     else if (b.hasAttribute("data-cancel")) { editingSpend = null; render(); }
-  });
-  $("spendList").addEventListener("submit", e => {
+  };
+  const onSpendSubmit = e => {
     e.preventDefault();
     const f = e.target, x = state.expenses.find(i => i.id === f.dataset.spendForm); if (!x) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
     Object.assign(x, { amount, name: f.elements.name.value.trim(), kind: f.kind.value === "in" ? "in" : "out", date: f.date.value || x.date, cat: SPEND_CATS[f.cat.value] ? f.cat.value : "Sonstiges" });
+    x.payOn = x.kind !== "in" && f.payOn.value > x.date ? f.payOn.value : null;
     editingSpend = null; scheduleSave();
-  });
+  };
+  ["spendList", "laterList"].forEach(id => { $(id).addEventListener("click", onSpendClick); $(id).addEventListener("submit", onSpendSubmit); });
 
   const showReset = on => { $("resetConfirm").hidden = !on; $("spendFoot").hidden = on; };
   $("resetBtn").addEventListener("click", () => { showReset(true); $("resetNo").focus(); });
@@ -1233,9 +1263,10 @@ body.is-locked .wrap { visibility: hidden; }
     const carried = $("carryOver").checked ? round2(t.avail) : 0;
     state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat(),
       income: round2(t.income), costs: round2(t.costs), savings: round2(t.savings), extra: round2(extraIn()) }, ...state.history].slice(0, 24);
-    state.expenses = !carried ? []
+    const later = state.expenses.filter(isLater);
+    state.expenses = [...later, ...(!carried ? []
       : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today(), cat: CARRY_CAT }]
-      : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }];
+      : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }])];
     state.periodStart = now;
     editingSpend = null;
     showReset(false);
