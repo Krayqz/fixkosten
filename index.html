@@ -986,7 +986,9 @@ body.is-locked .wrap { visibility: hidden; }
     const spent = sum(active().filter(e => e.kind !== "in"), e => e.amount);
     const added = sum(active().filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
-    const reserved = sum(state.reserved, r => r.amount);
+    // reserved money only counts in the wage period it is meant for (undated: now)
+    const resEnd = isoDay(periodWindow().end);
+    const reserved = sum(state.reserved.filter(r => !r.date || r.date < resEnd), r => r.amount);
     return { income, costs, savings, spent, added, rest, reserved, avail: rest + added - spent };
   }
 
@@ -1140,7 +1142,8 @@ body.is-locked .wrap { visibility: hidden; }
     const planned = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(start) && e.payOn < iso(end)), e => e.amount);
     const later = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(end)), e => e.amount);
     const carry = t.avail - laterDueNow() - t.reserved;
-    return { start, income: t.income, costs, carry, planned, later, total: t.income - costs + carry - planned };
+    const reserved = sum(state.reserved.filter(r => r.date && r.date >= iso(start) && r.date < iso(end)), r => r.amount);
+    return { start, income: t.income, costs, carry, planned, later, reserved, total: t.income - costs + carry - planned - reserved };
   }
   function renderNextMonth(t) {
     const el = $("nextMonth");
@@ -1155,6 +1158,7 @@ body.is-locked .wrap { visibility: hidden; }
         ${row("Fixkosten im nächsten Monat", -n.costs)}
         ${row((n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt") + (laterDueNow() || t.reserved ? " (nach „später bezahlen“/vorgemerkt)" : ""), n.carry, n.carry < 0 ? "minus" : "plus")}
         ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
+        ${n.reserved ? row("Vorgemerkt für dann", -n.reserved) : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
         ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“, die erst später abgebucht werden.</p>` : ""}
       </div></details>`;
