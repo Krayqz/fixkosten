@@ -205,6 +205,9 @@ h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
 .ring-mid .label { color: var(--muted); }
 .rest { color: var(--good); font-weight: 800; font-size: clamp(1.8rem, 10vw, 2.7rem); letter-spacing: -.03em; font-family: var(--display); white-space: nowrap; }
 .rest.neg { color: var(--bad); }
+.after-later { font-size: .74rem; line-height: 1.3; color: var(--muted); max-width: 11rem; margin: 2px auto 0; }
+.after-later b { display: block; font-size: .9rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.after-later b.minus { color: var(--bad); }
 .perday { font-size: .9rem; color: #9fb0a8; text-align: center; margin-top: -4px; }
 .perday:empty { display: none; }
 .top { flex-wrap: nowrap; }
@@ -439,6 +442,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="ring-mid">
         <div class="label">Noch verfügbar</div>
         <div class="rest" id="avail">0,00 €</div>
+        <div class="after-later" id="afterLater" hidden></div>
       </div>
     </div>
     <div class="perday" id="perDay"></div>
@@ -801,6 +805,10 @@ body.is-locked .wrap { visibility: hidden; }
   function renderHero(t) {
     $("avail").textContent = fmt(t.avail);
     $("avail").classList.toggle("neg", t.avail < 0);
+    // pay-later items that are still debited before the next wage: show what is left afterwards
+    const due = laterDueNow();
+    $("afterLater").hidden = !due;
+    if (due) $("afterLater").innerHTML = `nach „später bezahlen“ voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>`;
     $("eqIncome").textContent = fmt(t.income);
     $("eqCosts").textContent = "− " + fmt(t.costs);
     $("eqRest").textContent = fmt(t.rest);
@@ -894,6 +902,8 @@ body.is-locked .wrap { visibility: hidden; }
 
   // preview of the next wage period: wage minus the fixed costs due then, plus what is left (or minus) now,
   // minus spending already planned for that period ("Kommt noch")
+  // pay-later spending that is debited before the next wage
+  const laterDueNow = () => { const end = isoDay(periodWindow().end); return sum(state.expenses.filter(e => isLater(e) && e.payOn < end), e => e.amount); };
   function nextPeriod(t) {
     const start = periodWindow().end;
     const end = state.payday ? (() => { const d = new Date(start); d.setDate(d.getDate() + 1); return nextPayday(state.payday, d).date; })()
@@ -903,7 +913,8 @@ body.is-locked .wrap { visibility: hidden; }
     const iso = d => isoDay(d);
     const planned = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(start) && e.payOn < iso(end)), e => e.amount);
     const later = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(end)), e => e.amount);
-    return { start, income: t.income, costs, carry: t.avail, planned, later, total: t.income - costs + t.avail - planned };
+    const carry = t.avail - laterDueNow();
+    return { start, income: t.income, costs, carry, planned, later, total: t.income - costs + carry - planned };
   }
   function renderNextMonth(t) {
     const el = $("nextMonth");
@@ -916,8 +927,8 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="nm-body">
         ${row("Lohn", n.income)}
         ${row("Fixkosten im nächsten Monat", -n.costs)}
-        ${row(n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt", n.carry, n.carry < 0 ? "minus" : "plus")}
-        ${n.planned ? row("Schon geplant („Kommt noch“)", -n.planned) : ""}
+        ${row((n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt") + (laterDueNow() ? " (nach „später bezahlen“)" : ""), n.carry, n.carry < 0 ? "minus" : "plus")}
+        ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
         ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“, die erst später abgebucht werden.</p>` : ""}
       </div></details>`;
