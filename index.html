@@ -328,6 +328,7 @@ th, td { border-bottom-color: var(--line); }
 .tabbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+.warn-text { color: var(--spent); }
 .due-row { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 8px; font-size: .92rem; }
 .due-date { color: var(--good); font-weight: 700; }
 .due-name { overflow-wrap: anywhere; }
@@ -461,7 +462,7 @@ body.is-locked .wrap { visibility: hidden; }
         <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
       </dl>
     </details>
-    <div class="section-head"><h2>Fixkosten</h2><span class="label">pro Monat</span></div>
+    <div class="section-head"><h2>Fixkosten</h2><span class="label">diesen Monat</span></div>
     <div class="chips" id="chips"></div>
     <p class="saving-line" id="savingLine" hidden></p>
   </section>
@@ -546,7 +547,8 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="newAmount">Betrag</label><div class="money"><input id="newAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
         <div class="field"><label for="newEvery">Wie oft abgebucht</label><select id="newEvery"></select></div>
         <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"></div>
-        <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird.</span>
+        <div class="field wide mode-field" hidden><label for="newMode">Wie abziehen</label><select id="newMode" name="mode"><option value="spread">Jeden Monat einen Teil weglegen</option><option value="full">Alles im Monat der Abbuchung abziehen</option></select></div>
+        <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird. Willst du alles im Abbuchungsmonat abziehen, brauchst du das Datum.</span>
         <button class="btn" type="submit">Hinzufügen</button>
       </div>
     </form>
@@ -685,11 +687,11 @@ body.is-locked .wrap { visibility: hidden; }
   };
   const toField = n => n ? n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
   const monthly = it => it.amount / (it.every || 1);
-  // next debit on or after today, stepping from the date the person entered
-  function nextDue(it) {
+  // next debit on or after a day (default today), stepping from the date the person entered
+  function nextDue(it, from) {
     if (!it.due) return null;
     const [y, m, d] = it.due.split("-").map(Number);
-    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const now = from ? new Date(from) : new Date(); now.setHours(0, 0, 0, 0);
     const at = k => { const mm = m - 1 + k * it.every; return new Date(y, mm, Math.min(d, new Date(y, mm + 1, 0).getDate())); };
     let k = 0;
     if (at(0) < now) k = Math.ceil(((now.getFullYear() - y) * 12 + now.getMonth() - (m - 1)) / it.every) - 1;
@@ -697,6 +699,22 @@ body.is-locked .wrap { visibility: hidden; }
     while (k > 0 && at(k - 1) >= now) k--;
     return at(k);
   }
+  // the running wage period: from the last "Neuer Lohn ist da" (or the 1st) to the next payday (or one month later)
+  function periodWindow() {
+    const start = state.periodStart ? new Date(state.periodStart) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    const end = state.payday ? nextPayday(state.payday).date : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
+    end.setHours(0, 0, 0, 0);
+    return { start, end: end > start ? end : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate()) };
+  }
+  // "full" items cost their whole amount in the period they are debited and nothing otherwise;
+  // without a date they fall back to setting aside a share every month
+  const isFull = it => it.mode === "full" && it.every > 1 && !!it.due;
+  function dueThisPeriod(it) {
+    const w = periodWindow(), d = nextDue(it, w.start);
+    return d && d < w.end ? d : null;
+  }
+  const costNow = it => isFull(it) ? (dueThisPeriod(it) ? it.amount : 0) : monthly(it);
   const uid = () => Math.random().toString(36).slice(2, 10);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
@@ -720,8 +738,8 @@ body.is-locked .wrap { visibility: hidden; }
 
   function totals() {
     const income = (state.mainIncome || 0) + (state.minijob || 0);
-    const costs = sum(state.items, monthly);
-    const savings = sum(state.items.filter(i => i.category === SAVING_CAT), monthly);
+    const costs = sum(state.items, costNow);
+    const savings = sum(state.items.filter(i => i.category === SAVING_CAT), costNow);
     const spent = sum(state.expenses.filter(e => e.kind !== "in"), e => e.amount);
     const added = sum(state.expenses.filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
@@ -801,7 +819,7 @@ body.is-locked .wrap { visibility: hidden; }
       ? `<span><i style="background:var(--ring-base)"></i>Fixkosten</span>` + (t.spent ? `<span><i style="background:var(--spent)"></i>Ausgaben</span>` : "") + (free > 0 ? `<span><i style="background:var(--good)"></i>Frei</span>` : "")
       : "";
 
-    const cats = categories().map(cat => ({ cat, sum: sum(state.items.filter(i => i.category === cat), monthly) })).filter(s => s.sum > 0);
+    const cats = categories().map(cat => ({ cat, sum: sum(state.items.filter(i => i.category === cat), costNow) })).filter(s => s.sum > 0);
     $("chips").innerHTML = cats.map(s => `<a class="chip" href="#ledger" style="border-top-color:${colorFor(s.cat)}"><span class="chip-ico" aria-hidden="true">${CAT_ICONS[s.cat] || "•"}</span><small>${esc(s.cat)}</small><b class="num">${fmt(s.sum)}</b></a>`).join("");
 
     $("savingLine").hidden = !t.savings;
@@ -992,18 +1010,20 @@ body.is-locked .wrap { visibility: hidden; }
       return;
     }
     $("ledger").innerHTML = groups.map(([cat, list]) => `<div class="group">
-        <div class="group-head"><h3><i style="background:${colorFor(cat)}"></i>${esc(cat)}</h3><span class="num">${fmt(sum(list, monthly))}</span></div>
+        <div class="group-head"><h3><i style="background:${colorFor(cat)}"></i>${esc(cat)}</h3><span class="num">${fmt(sum(list, costNow))}</span></div>
         ${list.map(it => it.id === editingCost ? costEditor(it) : costRow(it)).join("")}</div>`).join("")
-      + `<div class="total-line"><span>Fixkosten pro Monat</span><span class="num">${fmt(sum(state.items, monthly))}</span></div>`;
+      + `<div class="total-line"><span>Fixkosten in diesem Monat</span><span class="num">${fmt(sum(state.items, costNow))}</span></div>`;
     focusEditor("ledger");
   }
   function costRow(it) {
     const pill = it.every > 1 ? `<span class="pill">${everyLabel(it.every)}</span>` : "";
-    const per = it.every > 1 ? `<div class="meta num">${fmt(it.amount)} pro Abbuchung</div>` : "";
+    const full = isFull(it);
+    const per = it.every > 1 ? `<div class="meta num">${fmt(it.amount)} pro Abbuchung, ${full ? "wird im Abbuchungsmonat ganz abgezogen" : `jeden Monat ${fmt(monthly(it))} weglegen`}</div>` : "";
     const due = nextDue(it);
     const when = due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "";
-    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}</div>
-      <span class="num">${fmt(monthly(it))}</span>
+    const missing = it.mode === "full" && it.every > 1 && !it.due ? `<div class="meta warn-text">Für „ganz im Abbuchungsmonat“ fehlt das Datum. Bis dahin wird anteilig gerechnet.</div>` : "";
+    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
+      <span class="num">${fmt(costNow(it))}</span>
       <span class="actions"><button class="icon" type="button" data-edit="${it.id}" aria-label="${esc(it.name)} ändern">✎</button><button class="icon" type="button" data-del="${it.id}" aria-label="${esc(it.name)} löschen">✕</button></span></div>`;
   }
   function costEditor(it) {
@@ -1014,6 +1034,7 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="ce-amt">Betrag</label><div class="money"><input id="ce-amt" name="amount" inputmode="decimal" value="${toField(it.amount)}" required><span>€</span></div></div>
         <div class="field"><label for="ce-int">Wie oft abgebucht</label><select id="ce-int" name="every">${everyOptions(it.every)}</select></div>
         <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"></div>
+        <div class="field wide mode-field"${it.every > 1 ? "" : " hidden"}><label for="ce-mode">Wie abziehen</label><select id="ce-mode" name="mode"><option value="spread"${it.mode !== "full" ? " selected" : ""}>Jeden Monat einen Teil weglegen</option><option value="full"${it.mode === "full" ? " selected" : ""}>Alles im Monat der Abbuchung abziehen</option></select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
   }
@@ -1044,7 +1065,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.payday = pd >= 1 && pd <= 31 ? pd : null;
     s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
       id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
-      amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1),
+      amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1), mode: i.mode === "full" ? "full" : "spread",
       due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
@@ -1253,12 +1274,16 @@ body.is-locked .wrap { visibility: hidden; }
 
   // --- events: fixed costs ---
   $("newEvery").innerHTML = everyOptions(1);
+  // the "how to deduct" choice only matters for costs debited every 2 months or less often
+  const showModeField = form => { form.querySelector(".mode-field").hidden = Number(form.querySelector("[name=every], #newEvery").value) <= 1; };
+  $("costForm").addEventListener("change", e => { if (e.target.id === "newEvery") showModeField($("costForm")); });
+  $("ledger").addEventListener("change", e => { if (e.target.name === "every") showModeField(e.target.form); });
   $("costForm").addEventListener("submit", e => {
     e.preventDefault();
     const amount = parseEuro($("newAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("newAmount").focus(); return; }
-    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, every: clampEvery($("newEvery").value), due: $("newDue").value || null });
-    $("newName").value = ""; $("newAmount").value = ""; $("newEvery").value = "1"; $("newDue").value = "";
+    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, every: clampEvery($("newEvery").value), due: $("newDue").value || null, mode: $("newMode").value === "full" ? "full" : "spread" });
+    $("newName").value = ""; $("newAmount").value = ""; $("newEvery").value = "1"; $("newDue").value = ""; $("newMode").value = "spread"; showModeField($("costForm"));
     $("newName").focus();
     scheduleSave();
   });
@@ -1273,7 +1298,7 @@ body.is-locked .wrap { visibility: hidden; }
     const f = e.target, it = state.items.find(i => i.id === f.dataset.form); if (!it) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
-    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null });
+    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, mode: f.mode.value === "full" ? "full" : "spread" });
     editingCost = null; scheduleSave();
   });
 
