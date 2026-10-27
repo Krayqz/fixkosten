@@ -100,7 +100,7 @@ p { margin: 0; }
 input, select, button { font: inherit; }
 .field { display: grid; gap: 4px; min-width: 0; }
 .field > label, .field > .flabel { font-size: .78rem; color: var(--muted); font-weight: 500; }
-input[type="text"], input[type="date"], input[type="number"], select {
+input[type="text"], input[type="search"], input[type="date"], input[type="number"], select {
   display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 42px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
   padding: 8px 10px; font-size: 16px;
@@ -112,7 +112,7 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .money span { padding-right: 10px; color: var(--muted); }
 .money.big input { font-size: 1.25rem; }
 input:focus { outline: none; }
-.money:focus-within, select:focus-visible, input[type="text"]:focus-visible, input[type="date"]:focus-visible, input[type="number"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.money:focus-within, select:focus-visible, input[type="text"]:focus-visible, input[type="search"]:focus-visible, input[type="date"]:focus-visible, input[type="number"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .btn { border: 0; border-radius: 8px; background: var(--accent); color: var(--surface); padding: 10px 16px; min-height: 42px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
 .btn.danger { background: var(--bad); }
@@ -250,7 +250,7 @@ h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
 .btn.small { min-height: 32px; border-radius: 10px; }
 #reloadBtn, #logoutBtn { background: var(--surface); color: var(--muted); }
 .btn:focus-visible, .icon:focus-visible, .seg button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="password"], select, .money {
+input[type="text"], input[type="search"], input[type="date"], input[type="number"], input[type="email"], input[type="password"], select, .money {
   background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); min-height: 44px;
 }
 .money input { font-family: var(--body); font-variant-numeric: tabular-nums; }
@@ -345,6 +345,19 @@ th, td { border-bottom-color: var(--line); }
 .cat-new input { min-width: 0; text-align: center; }
 .cat-new input + input { text-align: left; }
 .cat-pick button[data-cat-add] { border-style: dashed; color: var(--muted); }
+.help-search { margin: 4px 0 12px; }
+.help-search input { width: 100%; -webkit-appearance: none; appearance: none; }
+.help-list { display: grid; gap: 8px; }
+.help-item { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; }
+.help-item summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: center; min-height: 48px; font-weight: 600; }
+.help-item summary::-webkit-details-marker { display: none; }
+.help-item summary::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform .15s; }
+.help-item[open] summary::after { transform: rotate(90deg); }
+.help-item p { margin: 0 0 10px; color: var(--muted); line-height: 1.45; }
+.help-item .linklike { margin-bottom: 12px; }
+.sign-seg { margin-bottom: 10px; }
+.seg button[aria-pressed="true"][data-sign="+"] { background: var(--good); color: var(--accent-ink); }
+.seg button[aria-pressed="true"][data-sign="-"] { background: var(--bad); color: #fff; }
 .bank-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .hint-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; font-size: .92rem; }
 .verdict { font-weight: 700; }
@@ -540,7 +553,6 @@ body.is-locked .wrap { visibility: hidden; }
         <dt class="sum">Rest nach Fixkosten</dt><dd class="sum" id="eqRest">0,00 €</dd>
         <dt>Einzahlungen</dt><dd id="eqAdded">+ 0,00 €</dd>
         <dt>Ausgaben</dt><dd id="eqSpent">− 0,00 €</dd>
-        <dt id="eqResL" hidden>Vorgemerkt</dt><dd id="eqRes" hidden>− 0,00 €</dd>
         <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
       </dl>
     </details>
@@ -559,7 +571,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
       <form class="formbox" id="resForm" autocomplete="off" hidden>
         <strong>Geld vormerken</strong>
-        <span class="hint">Wird sofort von „verfügbar“ abgezogen, aber erst als Ausgabe gezählt, wenn du es kaufst.</span>
+        <span class="hint">Wird nicht abgezogen. Unter dem Kreis siehst du klein, wie viel danach voraussichtlich noch übrig ist. Erst wenn du es kaufst, wird es eine Ausgabe.</span>
         <div class="fields">
           <div class="field"><label for="resAmount">Betrag</label><div class="money big"><input id="resAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
           <div class="field"><label for="resName">Wofür</label><input type="text" id="resName" placeholder="z. B. Geschenk für Mama" required></div>
@@ -631,6 +643,7 @@ body.is-locked .wrap { visibility: hidden; }
     <section class="panel" aria-label="Mehr" data-tab="more">
       <h2>Mehr</h2>
       <div class="menu">
+        <button type="button" data-go="help"><span class="m-ico" aria-hidden="true">❓</span><span>Hilfe &amp; Suche<small>Jede Funktion erklärt, mit Suche</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="bank"><span class="m-ico" aria-hidden="true">🏦</span><span>Kontostand-Abgleich<small id="menuBank">Prüfen, ob dein Konto zur App passt</small></span><b aria-hidden="true">›</b></button>
@@ -641,12 +654,19 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
+    <section class="panel" aria-labelledby="helpH" data-tab="help">
+      <h2 id="helpH">Hilfe</h2>
+      <p class="hint">Hier ist jede Funktion kurz erklärt. Such einfach nach einem Wort, zum Beispiel „PayPal“, „Lohn“ oder „Face ID“.</p>
+      <div class="field help-search"><label for="helpQ" class="sr-only">Suchen</label><input type="search" id="helpQ" placeholder="🔍 Suchen …" autocomplete="off" enterkeyhint="search"></div>
+      <div class="help-list" id="helpList"></div>
+    </section>
+
     <section class="panel" aria-labelledby="bankH" data-tab="bank">
       <h2 id="bankH">Kontostand-Abgleich</h2>
       <p class="hint">Schau in deine Banking-App und trag ein, was gerade auf deinem Girokonto ist. Die App rechnet aus, was eigentlich drauf sein sollte.</p>
       <form class="formbox" id="bankForm" autocomplete="off">
+        <div class="seg sign-seg" role="group" aria-label="Plus oder Minus"><button type="button" data-sign="+" aria-pressed="true">＋ Im Plus</button><button type="button" data-sign="-" aria-pressed="false">− Im Minus</button></div>
         <div class="field"><label for="bankAmount">Kontostand jetzt</label><div class="row-btns bank-row"><div class="money big"><input id="bankAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div><button class="btn" type="submit">Prüfen</button></div></div>
-        <span class="hint">Im Minus? Schreib ein − davor.</span>
       </form>
       <div class="box" id="bankResult" hidden></div>
     </section>
@@ -947,7 +967,7 @@ body.is-locked .wrap { visibility: hidden; }
     const added = sum(active().filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
     const reserved = sum(state.reserved, r => r.amount);
-    return { income, costs, savings, spent, added, rest, reserved, avail: rest + added - spent - reserved };
+    return { income, costs, savings, spent, added, rest, reserved, avail: rest + added - spent };
   }
 
   function nextPayday(day, from) {
@@ -992,16 +1012,16 @@ body.is-locked .wrap { visibility: hidden; }
   function renderHero(t) {
     $("avail").textContent = fmt(t.avail);
     $("avail").classList.toggle("neg", t.avail < 0);
-    // pay-later items debited in this wage period only (later ones show up in "Nächster Monat")
-    const due = laterDueNow();
+    // pay-later items debited in this wage period (later ones show up in "Nächster Monat") plus reserved money
+    const later = laterDueNow(), due = later + t.reserved;
+    const what = later && t.reserved ? "„später bezahlen“/vorgemerkt" : later ? "„später bezahlen“" : "vorgemerkt";
     $("afterLater").hidden = !due;
-    if (due) $("afterLater").innerHTML = `nach „später bezahlen“ voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>`;
+    if (due) $("afterLater").innerHTML = `nach ${what} voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>noch zur Verfügung`;
     $("eqIncome").textContent = fmt(t.income);
     $("eqCosts").textContent = "− " + fmt(t.costs);
     $("eqRest").textContent = fmt(t.rest);
     $("eqAdded").textContent = "+ " + fmt(t.added);
     $("eqSpent").textContent = "− " + fmt(t.spent);
-    $("eqRes").textContent = "− " + fmt(t.reserved); $("eqRes").hidden = $("eqResL").hidden = !t.reserved;
     $("eqAvail").textContent = fmt(t.avail);
 
     if (!t.income) {
@@ -1012,7 +1032,6 @@ body.is-locked .wrap { visibility: hidden; }
       $("perDay").innerHTML = t.avail < 0
         ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`
         : `Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`;
-      if (t.reserved) $("perDay").innerHTML += ` · <span class="hint">${fmt(t.reserved)} vorgemerkt</span>`;
     } else {
       $("perDay").innerHTML = t.avail < 0 ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span>` : "";
     }
@@ -1020,7 +1039,7 @@ body.is-locked .wrap { visibility: hidden; }
 
     // ring: fixed costs (grey), spending (orange), what is still free (green); full circle = income plus deposits
     const base = Math.max(t.income + t.added, t.costs + t.spent) || 1;
-    const spentShown = Math.min(t.spent + t.reserved, Math.max(t.rest + t.added, 0));
+    const spentShown = Math.min(t.spent, Math.max(t.rest + t.added, 0));
     const free = Math.max(t.avail, 0);
     const R = 110, C = 2 * Math.PI * R;
     const segs = [[Math.min(t.costs, base), "var(--ring-base)"], [spentShown, "var(--spent)"], [free, "var(--good)"]].filter(([v]) => v > 0);
@@ -1099,7 +1118,7 @@ body.is-locked .wrap { visibility: hidden; }
     const iso = d => isoDay(d);
     const planned = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(start) && e.payOn < iso(end)), e => e.amount);
     const later = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(end)), e => e.amount);
-    const carry = t.avail - laterDueNow();
+    const carry = t.avail - laterDueNow() - t.reserved;
     return { start, income: t.income, costs, carry, planned, later, total: t.income - costs + carry - planned };
   }
   function renderNextMonth(t) {
@@ -1113,7 +1132,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="nm-body">
         ${row("Lohn", n.income)}
         ${row("Fixkosten im nächsten Monat", -n.costs)}
-        ${row((n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt") + (laterDueNow() ? " (nach „später bezahlen“)" : ""), n.carry, n.carry < 0 ? "minus" : "plus")}
+        ${row((n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt") + (laterDueNow() || t.reserved ? " (nach „später bezahlen“/vorgemerkt)" : ""), n.carry, n.carry < 0 ? "minus" : "plus")}
         ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
         ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“, die erst später abgebucht werden.</p>` : ""}
@@ -1178,7 +1197,7 @@ body.is-locked .wrap { visibility: hidden; }
   function renderReserved() {
     const list = [...state.reserved].sort((a, b) => (a.date || "9").localeCompare(b.date || "9"));
     $("resList").hidden = !list.length;
-    $("resList").innerHTML = `<div class="lock-head"><strong>Vorgemerkt</strong><span class="label">schon von „verfügbar“ abgezogen</span></div>`
+    $("resList").innerHTML = `<div class="lock-head"><strong>Vorgemerkt</strong><span class="label">noch nicht abgezogen</span></div>`
       + list.map(r => `<div class="res-row"><span>${esc(r.name)}<small>${r.date ? "ca. " + fmtDate(r.date) : "ohne Datum"}</small></span><span class="num">${fmt(r.amount)}</span>`
         + `<span class="actions"><button class="btn small" type="button" data-res-buy="${r.id}">Gekauft</button><button class="icon" type="button" data-res-del="${r.id}" aria-label="${esc(r.name)} löschen">✕</button></span></div>`).join("")
       + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(list, r => r.amount))}</span></div>`;
@@ -1216,7 +1235,7 @@ body.is-locked .wrap { visibility: hidden; }
       } else if (next > now && next < end && costNow(it)) open.push([it, costNow(it)]);
     }
     const openSum = sum(open, ([, v]) => v), savedSum = sum(saved, ([, v]) => v);
-    return { open, saved, openSum, savedSum, undated, expected: t.avail + t.reserved + openSum + savedSum };
+    return { open, saved, openSum, savedSum, undated, expected: t.avail + openSum + savedSum };
   }
   function renderBank(t) {
     const b = state.balance;
@@ -1227,7 +1246,6 @@ body.is-locked .wrap { visibility: hidden; }
     $("bankResult").hidden = false;
     $("bankResult").innerHTML = `<div class="lock-head"><strong>So viel sollte drauf sein</strong><span class="label">${fmtDate(b.date)}</span></div>`
       + row("Noch verfügbar", t.avail)
-      + (t.reserved ? row("Vorgemerkt (noch nicht ausgegeben)", t.reserved) : "")
       + (x.openSum ? row("Fixkosten, die noch abgebucht werden", x.openSum, x.open.map(([it]) => esc(it.name)).join(", ")) : "")
       + (x.savedSum ? row("Angespart für seltene Abbuchungen", x.savedSum, x.saved.map(([it]) => esc(it.name)).join(", ")) : "")
       + `<div class="nm-row sum"><span>Erwartet</span><span class="num">${fmt(x.expected)}</span></div>`
@@ -1478,7 +1496,6 @@ body.is-locked .wrap { visibility: hidden; }
     }
     const net = t.added - t.spent;
     $("spendSum").innerHTML = list.length ? `Summe: <span class="num ${net >= 0 ? "plus" : "minus"}">${net >= 0 ? "+" : "−"} ${fmt(Math.abs(net))}</span>` : "";
-    t = { ...t, avail: t.avail + t.reserved };
     $("carryText").innerHTML = t.avail > 0 ? `Übrige ${fmt(t.avail)} als Einzahlung in den neuen Zeitraum mitnehmen`
       : t.avail < 0 ? `<span class="minus">Minus von ${fmt(-t.avail)}</span> vom neuen Lohn abziehen`
       : "Übriges Geld mitnehmen (gerade ist nichts übrig)";
@@ -1756,9 +1773,14 @@ body.is-locked .wrap { visibility: hidden; }
   // --- events: bank balance check ---
   $("bankForm").addEventListener("submit", e => {
     e.preventDefault();
-    const v = parseEuro($("bankAmount").value);
+    let v = parseEuro($("bankAmount").value);
     if (Number.isNaN(v)) { $("bankAmount").focus(); return; }
+    if ($("bankForm").querySelector('[data-sign="-"]').getAttribute("aria-pressed") === "true") v = -Math.abs(v);
     state.balance = { amount: v, date: today() }; scheduleSave();
+  });
+  $("bankForm").addEventListener("click", e => {
+    const b = e.target.closest("[data-sign]"); if (!b) return;
+    $("bankForm").querySelectorAll("[data-sign]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
   });
   $("bankResult").addEventListener("click", e => {
     if (!e.target.closest("#bankFix") || !state.balance) return;
@@ -1811,10 +1833,55 @@ body.is-locked .wrap { visibility: hidden; }
     }
   });
 
+  // --- help center: every feature explained, with a search ---
+  const HELP = [
+    ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung."],
+    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich."],
+    ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein."],
+    ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen."],
+    ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin."],
+    ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen."],
+    ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt."],
+    ["✎", "Eintrag ändern oder löschen", "entries", "bearbeiten löschen falsch", "In der Liste bei „Einträge“ auf ✎ tippen zum Ändern, auf ✕ zum Löschen."],
+    ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“ und wird erst in dem Monat abgezogen, in dem sie abgebucht wird."],
+    ["🔢", "In Raten bezahlen", "entries", "raten ratenzahlung klarna abzahlen", "Bei „später bezahlen“ kannst du „In 2 Raten“, „In 3 Raten“ usw. wählen. Jede Rate wird in ihrem eigenen Monat abgezogen."],
+    ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe."],
+    ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“."],
+    ["💶", "Neuer Lohn ist da", "entries", "lohn gehalt neuer monat zeitraum übertrag minus mitnehmen", "Wenn dein Lohn kommt, unten bei „Einträge“ auf „Neuer Lohn ist da“ tippen. Dort bestätigst oder änderst du den Lohn (Hauptjob und Minijob) und nimmst übriges Geld oder ein Minus mit. Die alten Einträge landen im Verlauf."],
+    ["🗓️", "Kalender", "cal", "tag datum wann abbuchung", "Zeigt für jeden Tag, wann Lohn kommt, Fixkosten abgebucht werden, was du ausgegeben hast, was später abgebucht wird und was vorgemerkt ist. Tipp auf einen Tag für Details."],
+    ["📋", "Fixkosten hinzufügen und ändern", "costs", "miete vertrag handy versicherung abo posten", "Unter „Fixkosten“ auf „+ Fixkosten hinzufügen“ tippen: Name, Kategorie, Betrag, wie oft abgebucht wird und optional die nächste Abbuchung. Mit ✎ änderst du einen Posten."],
+    ["🔁", "Jährliche oder seltene Abbuchungen", "costs", "jährlich vierteljährlich halbjährlich kfz steuer versicherung weglegen", "Bei Posten, die nicht jeden Monat kommen, wählst du: jeden Monat einen Teil weglegen, oder alles im Monat der Abbuchung abziehen. Fürs Zweite braucht der Posten ein Datum."],
+    ["📆", "Datum entfernen", "costs", "datum löschen leer", "Unter jedem Datumsfeld steht „Datum entfernen“. Damit machst du das Feld wieder leer."],
+    ["⌛", "Vertrag läuft aus", "costs", "kündigen ende laufzeit vertrag", "Trag bei einem Posten „Vertrag läuft aus am“ ein. Kurz vorher erscheint eine Karte in der Übersicht, damit du rechtzeitig kündigen oder wechseln kannst."],
+    ["📈", "Preiserhöhungen", "costs", "teurer günstiger preis erhöhung", "Änderst du den Betrag eines Postens, merkt sich die App den alten Preis. Bei „Fixkosten“ siehst du dann, was teurer oder günstiger geworden ist."],
+    ["📊", "Auswertung", "stats", "statistik kategorien vergleich jahr", "Unter „Mehr“ → „Auswertung“ siehst du, wofür dein Geld weggeht, den Vergleich mit den letzten Monaten und die Jahresübersicht."],
+    ["💡", "Spar-Hinweise", "stats", "sparen tipp zu viel", "Ganz oben in der Auswertung. Die App sagt dir, ob du zum Monatsende knapp wirst und wo du mehr als sonst ausgibst."],
+    ["🗒️", "Wochenrückblick", "stats", "woche letzte woche", "In der Auswertung und als Karte in der Übersicht: wie viel du letzte Woche ausgegeben hast, im Vergleich zur Woche davor."],
+    ["📜", "Verlauf und Verlauf leeren", "stats", "alte monate history löschen", "Im Verlauf (in der Auswertung) siehst du deine alten Monate. Mit „Verlauf leeren“ löschst du ihn."],
+    ["🤝", "Geld verliehen & geliehen", "debts", "schulden leihen schuldet zurückzahlen", "Unter „Mehr“ trägst du ein, wem du Geld geliehen hast oder wem du etwas schuldest. Ist es zurückgezahlt, tipp auf ✓. Auf Wunsch wird es gleich als Ein- oder Ausgabe eingetragen."],
+    ["🏦", "Kontostand-Abgleich", "bank", "konto bank girokonto stimmt minus dispo", "Trag deinen Kontostand aus der Banking-App ein. Mit dem Schalter wählst du „Im Plus“ oder „Im Minus“. Die App zeigt, was drauf sein sollte, und kann den Unterschied für dich eintragen."],
+    ["🤔", "Was wäre wenn?", "whatif", "ausprobieren durchrechnen vertrag kaufen", "Probier aus, was ein Kauf oder ein neuer Vertrag mit deinem Geld machen würde, bevor du etwas einträgst. Hier wird nichts gespeichert."],
+    ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
+    ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
+    ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal."],
+    ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
+    ["↻", "Neu laden und Abmelden", "", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Daneben kannst du dich abmelden."],
+  ];
+  function renderHelp() {
+    const q = $("helpQ").value.trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const hits = HELP.filter(h => words.every(w => (h[1] + " " + h[3] + " " + h[4]).toLowerCase().includes(w)));
+    $("helpList").innerHTML = hits.length
+      ? hits.map(([ico, title, go, , text]) => `<details class="help-item"${words.length && hits.length <= 3 ? " open" : ""}><summary><span aria-hidden="true">${ico}</span>${esc(title)}</summary><p>${esc(text)}</p>${go ? `<button class="linklike" type="button" data-go="${go}">Hinbringen ›</button>` : ""}</details>`).join("")
+      : `<div class="empty"><strong>Nichts gefunden</strong>Versuch ein anderes Wort, zum Beispiel „Lohn“, „PayPal“ oder „Konto“.</div>`;
+  }
+  $("helpQ").addEventListener("input", renderHelp);
+  renderHelp();
+
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -1907,7 +1974,7 @@ body.is-locked .wrap { visibility: hidden; }
   $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
   $("resetYes").addEventListener("click", () => {
     const t = totals(), now = new Date().toISOString();
-    const carried = $("carryOver").checked ? round2(t.avail + t.reserved) : 0;
+    const carried = $("carryOver").checked ? round2(t.avail) : 0;
     state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat(),
       income: round2(t.income), costs: round2(t.costs), savings: round2(t.savings), extra: round2(extraIn()) }, ...state.history].slice(0, 24);
     const later = state.expenses.filter(isLater);
