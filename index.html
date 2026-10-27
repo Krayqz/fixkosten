@@ -329,6 +329,18 @@ th, td { border-bottom-color: var(--line); }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .warn-text { color: var(--spent); }
+.nm-card { background: var(--surface); border-radius: 18px; padding: 14px 16px; }
+.nm-card summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
+.nm-card summary::-webkit-details-marker { display: none; }
+.nm-card summary > div { display: grid; gap: 2px; }
+.nm-card small { color: var(--muted); font-size: .8rem; }
+.nm-card summary b { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
+.nm-card summary .hint { font-size: .78rem; }
+.nm-open { color: var(--muted); font-size: 1.4rem; transition: transform .2s; }
+.nm-card[open] .nm-open { transform: rotate(90deg); }
+.nm-body { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
+.nm-row { display: flex; justify-content: space-between; gap: 10px; }
+.nm-row.sum { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 700; }
 .later-check { grid-column: 1 / -1; font-size: .88rem; }
 .later-tag { color: var(--c1); }
 .later-box .list .item:last-child { border-bottom: 0; }
@@ -432,6 +444,7 @@ body.is-locked .wrap { visibility: hidden; }
     <div class="perday" id="perDay"></div>
     <div class="ring-keys" id="legend"></div>
     <div class="today" id="today"></div>
+    <div class="next-month" id="nextMonth"></div>
     <div class="hero-figure">
       <button class="linklike" type="button" id="fixBtn">Betrag stimmt nicht? Korrigieren</button>
       <form class="confirm" id="fixForm" hidden autocomplete="off">
@@ -756,8 +769,8 @@ body.is-locked .wrap { visibility: hidden; }
     return { income, costs, savings, spent, added, rest, avail: rest + added - spent };
   }
 
-  function nextPayday(day) {
-    const now = new Date(); now.setHours(12, 0, 0, 0);
+  function nextPayday(day, from) {
+    const now = from ? new Date(from) : new Date(); now.setHours(12, 0, 0, 0);
     const at = (y, m) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()), 12);
     let next = at(now.getFullYear(), now.getMonth());
     if (next <= now) next = at(now.getFullYear(), now.getMonth() + 1);
@@ -776,6 +789,7 @@ body.is-locked .wrap { visibility: hidden; }
     renderIncome(t);
     renderSpending(t);
     renderToday(t);
+    renderNextMonth(t);
     renderWarn(t);
     renderSettings();
     renderStats(t);
@@ -876,6 +890,37 @@ body.is-locked .wrap { visibility: hidden; }
   function toast(html) {
     $("toast").innerHTML = html; $("toast").hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; }, 5000);
+  }
+
+  // preview of the next wage period: wage minus the fixed costs due then, plus what is left (or minus) now,
+  // minus spending already planned for that period ("Kommt noch")
+  function nextPeriod(t) {
+    const start = periodWindow().end;
+    const end = state.payday ? (() => { const d = new Date(start); d.setDate(d.getDate() + 1); return nextPayday(state.payday, d).date; })()
+      : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
+    end.setHours(0, 0, 0, 0);
+    const costs = sum(state.items, it => isFull(it) ? ((d => d && d < end ? it.amount : 0)(nextDue(it, start))) : monthly(it));
+    const iso = d => isoDay(d);
+    const planned = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(start) && e.payOn < iso(end)), e => e.amount);
+    const later = sum(state.expenses.filter(e => e.kind !== "in" && e.payOn && e.payOn >= iso(end)), e => e.amount);
+    return { start, income: t.income, costs, carry: t.avail, planned, later, total: t.income - costs + t.avail - planned };
+  }
+  function renderNextMonth(t) {
+    const el = $("nextMonth");
+    if (!t.income) { el.innerHTML = ""; return; }
+    const n = nextPeriod(t);
+    const row = (label, v, cls = "") => `<div class="nm-row"><span>${label}</span><span class="num ${cls}">${v < 0 ? "−" : "+"} ${fmt(Math.abs(v))}</span></div>`;
+    el.innerHTML = `<details class="nm-card">
+      <summary><div><small>Nächster Monat, ab ${state.payday ? "dem Lohn am " + fmtDate(isoDay(n.start)) : "dem nächsten Lohn"}</small>
+        <b class="num ${n.total < 0 ? "minus" : ""}">${fmt(n.total)}</b><span class="hint">voraussichtlich verfügbar, wenn du bis dahin nichts mehr ausgibst</span></div><span class="nm-open" aria-hidden="true">›</span></summary>
+      <div class="nm-body">
+        ${row("Lohn", n.income)}
+        ${row("Fixkosten im nächsten Monat", -n.costs)}
+        ${row(n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt", n.carry, n.carry < 0 ? "minus" : "plus")}
+        ${n.planned ? row("Schon geplant („Kommt noch“)", -n.planned) : ""}
+        <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
+        ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“, die erst später abgebucht werden.</p>` : ""}
+      </div></details>`;
   }
 
   function renderToday(t) {
