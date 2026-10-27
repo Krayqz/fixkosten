@@ -805,8 +805,8 @@ body.is-locked .wrap { visibility: hidden; }
   function renderHero(t) {
     $("avail").textContent = fmt(t.avail);
     $("avail").classList.toggle("neg", t.avail < 0);
-    // pay-later items that are still debited before the next wage: show what is left afterwards
-    const due = laterDueNow();
+    // all open pay-later items: show what is left once they are debited
+    const due = sum(state.expenses.filter(isLater), e => e.amount);
     $("afterLater").hidden = !due;
     if (due) $("afterLater").innerHTML = `nach „später bezahlen“ voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>`;
     $("eqIncome").textContent = fmt(t.income);
