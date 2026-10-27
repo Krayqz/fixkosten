@@ -175,6 +175,7 @@ th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--lin
 th:first-child, td:first-child { text-align: left; padding-left: 0; }
 th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+#clearHistBtn { justify-self: start; }
 #app { display: contents; }
 .top-right { display: flex; align-items: center; gap: 12px; }
 .btn.small { min-height: 32px; padding: 4px 12px; font-size: .85rem; }
@@ -343,6 +344,14 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     <section class="panel" aria-labelledby="histH">
       <h2 id="histH">Verlauf</h2>
       <div id="history"></div>
+      <button class="btn ghost" type="button" id="clearHistBtn" hidden>Verlauf leeren</button>
+      <div class="confirm" id="clearHistConfirm" hidden>
+        <span>Den ganzen Verlauf löschen? Deine Fixkosten, dein Einkommen und die aktuellen Einträge bleiben erhalten.</span>
+        <div class="row-btns">
+          <button class="btn danger" type="button" id="clearHistYes">Verlauf löschen</button>
+          <button class="btn ghost" type="button" id="clearHistNo">Abbrechen</button>
+        </div>
+      </div>
     </section>
 
     <section class="panel" aria-labelledby="backupH">
@@ -569,6 +578,7 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
   }
 
   function renderHistory() {
+    $("clearHistBtn").hidden = !state.history.length || !$("clearHistConfirm").hidden;
     if (!state.history.length) {
       $("history").innerHTML = `<p class="hint">Wenn du auf „Neuer Lohn ist da“ tippst, landet hier, wie viel du im abgelaufenen Zeitraum ausgegeben und mitgenommen hast.</p>`;
       return;
@@ -745,6 +755,11 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     state.expenses.push({ id: uid(), kind: diff > 0 ? "in" : "out", name: "Korrektur", amount: Math.abs(diff), date: today() });
     scheduleSave();
   });
+
+  // --- events: history ---
+  $("clearHistBtn").addEventListener("click", () => { $("clearHistConfirm").hidden = false; $("clearHistBtn").hidden = true; $("clearHistNo").focus(); });
+  $("clearHistNo").addEventListener("click", () => { $("clearHistConfirm").hidden = true; render(); $("clearHistBtn").focus(); });
+  $("clearHistYes").addEventListener("click", () => { state.history = []; $("clearHistConfirm").hidden = true; scheduleSave(); });
 
   // --- events: fixed costs ---
   $("costForm").addEventListener("submit", e => {
