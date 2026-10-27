@@ -335,6 +335,20 @@ th, td { border-bottom-color: var(--line); }
 .wk-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .wk-big b { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
 .warn-text { color: var(--spent); }
+.res-open { grid-column: 1 / -1; justify-self: center; font-size: .88rem; }
+.res-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.res-row:last-of-type { border-bottom: 0; }
+.res-row small { display: block; color: var(--muted); font-size: .78rem; }
+.cat-manage { display: grid; gap: 8px; background: var(--bg); border-radius: 12px; padding: 10px; }
+.cat-own { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; font-size: .92rem; }
+.cat-new { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; gap: 6px; }
+.cat-new input { min-width: 0; text-align: center; }
+.cat-new input + input { text-align: left; }
+.cat-pick button[data-cat-add] { border-style: dashed; color: var(--muted); }
+.bank-row { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.hint-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; font-size: .92rem; }
+.verdict { font-weight: 700; }
+.nm-row .num { white-space: nowrap; }
 .home-cards { display: grid; gap: 10px; }
 .home-cards:empty { display: none; }
 .mini-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 16px; padding: 12px 14px; border: 0; color: var(--ink); text-align: left; width: 100%; cursor: pointer; font: inherit; }
@@ -526,6 +540,7 @@ body.is-locked .wrap { visibility: hidden; }
         <dt class="sum">Rest nach Fixkosten</dt><dd class="sum" id="eqRest">0,00 €</dd>
         <dt>Einzahlungen</dt><dd id="eqAdded">+ 0,00 €</dd>
         <dt>Ausgaben</dt><dd id="eqSpent">− 0,00 €</dd>
+        <dt id="eqResL" hidden>Vorgemerkt</dt><dd id="eqRes" hidden>− 0,00 €</dd>
         <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
       </dl>
     </details>
@@ -540,13 +555,31 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="quick" id="entryQuick">
         <button class="btn" type="button" data-quick="out">− Ausgabe</button>
         <button class="btn dark" type="button" data-quick="in">+ Einzahlung</button>
+        <button class="linklike res-open" type="button" id="resOpen">＋ Geld vormerken (z. B. für ein Geschenk)</button>
       </div>
+      <form class="formbox" id="resForm" autocomplete="off" hidden>
+        <strong>Geld vormerken</strong>
+        <span class="hint">Wird sofort von „verfügbar“ abgezogen, aber erst als Ausgabe gezählt, wenn du es kaufst.</span>
+        <div class="fields">
+          <div class="field"><label for="resAmount">Betrag</label><div class="money big"><input id="resAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
+          <div class="field"><label for="resName">Wofür</label><input type="text" id="resName" placeholder="z. B. Geschenk für Mama" required></div>
+          <div class="field wide"><label for="resDate">Wann ungefähr? (freiwillig)</label><input type="date" id="resDate"><button type="button" class="linklike clear-date" data-clear="resDate">Datum entfernen</button></div>
+          <div class="row-btns wide"><button class="btn" type="submit">Vormerken</button><button class="btn ghost" type="button" id="resClose">Fertig</button></div>
+        </div>
+      </form>
+      <div class="box" id="resList" hidden></div>
       <form class="formbox" id="spendForm" autocomplete="off" hidden>
         <div class="seg" role="group" aria-label="Art des Eintrags">
           <button type="button" data-kind="out" aria-pressed="true">− Ausgabe</button>
           <button type="button" data-kind="in" aria-pressed="false">+ Einzahlung</button>
         </div>
         <div class="cat-pick" id="catPick" role="group" aria-label="Kategorie"></div>
+        <div class="cat-manage" id="catManage" hidden>
+          <strong>Eigene Kategorien</strong>
+          <div id="catOwn"></div>
+          <div class="cat-new"><input type="text" id="catIcon" maxlength="4" placeholder="🎮" aria-label="Emoji"><input type="text" id="catName" maxlength="20" placeholder="z. B. Gaming" aria-label="Name"><button class="btn small" type="button" id="catAdd">Anlegen</button></div>
+          <span class="hint">Tipp ins Emoji-Feld und wähl ein Emoji über die Tastatur aus.</span>
+        </div>
         <div class="fields">
           <div class="field"><label for="spendAmount">Betrag</label><div class="money big"><input id="spendAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
           <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
@@ -589,7 +622,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="box cal-box">
         <div class="cal-grid cal-head" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
         <div class="cal-grid" id="calGrid"></div>
-        <div class="ring-keys cal-keys"><span><i style="background:var(--good)"></i>Lohn/rein</span><span><i style="background:var(--ring-base)"></i>Fixkosten</span><span><i style="background:var(--spent)"></i>Ausgabe</span><span><i style="background:var(--c4)"></i>später bezahlt</span></div>
+        <div class="ring-keys cal-keys"><span><i style="background:var(--good)"></i>Lohn/rein</span><span><i style="background:var(--ring-base)"></i>Fixkosten</span><span><i style="background:var(--spent)"></i>Ausgabe</span><span><i style="background:var(--c4)"></i>später bezahlt</span><span><i style="background:var(--c6)"></i>vorgemerkt</span></div>
       </div>
       <div class="box" id="calDay"></div>
       <div class="box" id="calSum"></div>
@@ -600,11 +633,22 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="menu">
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="bank"><span class="m-ico" aria-hidden="true">🏦</span><span>Kontostand-Abgleich<small id="menuBank">Prüfen, ob dein Konto zur App passt</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="whatif"><span class="m-ico" aria-hidden="true">🤔</span><span>Was wäre wenn?<small>Neuen Vertrag oder große Ausgabe vorher durchrechnen</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
       </div>
+    </section>
+
+    <section class="panel" aria-labelledby="bankH" data-tab="bank">
+      <h2 id="bankH">Kontostand-Abgleich</h2>
+      <p class="hint">Schau in deine Banking-App und trag ein, was gerade auf deinem Girokonto ist. Die App rechnet aus, was eigentlich drauf sein sollte.</p>
+      <form class="formbox" id="bankForm" autocomplete="off">
+        <div class="field"><label for="bankAmount">Kontostand jetzt</label><div class="row-btns bank-row"><div class="money big"><input id="bankAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div><button class="btn" type="submit">Prüfen</button></div></div>
+        <span class="hint">Im Minus? Schreib ein − davor.</span>
+      </form>
+      <div class="box" id="bankResult" hidden></div>
     </section>
 
     <section class="panel" aria-labelledby="wifH" data-tab="whatif">
@@ -639,6 +683,8 @@ body.is-locked .wrap { visibility: hidden; }
     </section>
 
     <section class="panel" aria-labelledby="anaH" data-tab="stats">
+      <div class="panel-head"><h2>Spar-Hinweise</h2></div>
+      <div class="box" id="hintBox"></div>
       <div class="panel-head"><h2>Wochenrückblick</h2></div>
       <div class="box" id="weekBox"></div>
       <div class="panel-head"><h2 id="anaH">Wofür geht dein Geld weg?</h2><span class="label">seit dem Lohn</span></div>
@@ -681,6 +727,7 @@ body.is-locked .wrap { visibility: hidden; }
     </div>
     <div class="chips" id="chips"></div>
     <p class="saving-line" id="savingLine" hidden></p>
+    <div class="box" id="priceBox" hidden></div>
     <button class="btn dark" type="button" id="costOpen">+ Fixkosten hinzufügen</button>
     <form class="formbox" id="costForm" autocomplete="off" hidden>
       <div class="fields cost">
@@ -801,6 +848,15 @@ body.is-locked .wrap { visibility: hidden; }
   // everyday spending categories; "Korrektur" and "Übertrag" are set by the page itself
   const SPEND_CATS = { Essen: ["🍔", "--c3"], Einkaufen: ["🛒", "--c1"], Tanken: ["⛽", "--c5"], Freizeit: ["🎉", "--c4"], Kleidung: ["👕", "--c6"], Sonstiges: ["📦", "--c7"], Korrektur: ["✏️", "--c8"], "Übertrag": ["↩️", "--c7"] };
   const PICK_CATS = ["Essen", "Einkaufen", "Tanken", "Freizeit", "Kleidung", "Sonstiges"];
+  const BASE_PICK = [...PICK_CATS];
+  // the person's own spending categories are added to SPEND_CATS and the picker (before "Sonstiges")
+  let ownCats = [];
+  function registerCats(list) {
+    ownCats.forEach(n => delete SPEND_CATS[n]);
+    ownCats = list.map(c => c.name);
+    list.forEach((c, i) => { SPEND_CATS[c.name] = [c.icon || "🏷️", EXTRA_COLORS[(i + 2) % EXTRA_COLORS.length]]; });
+    PICK_CATS.splice(0, PICK_CATS.length, ...BASE_PICK.slice(0, -1), ...ownCats, "Sonstiges");
+  }
   const CARRY_CAT = "Übertrag";
   const EXTRA_COLORS = ["--c5", "--c1", "--c4", "--c6", "--c3", "--c8"];
   const SAVING_CAT = "Sparen";
@@ -811,7 +867,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], periodStart: null, history: [], warnBelow: 50, warnDaily: true });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, periodStart: null, history: [], warnBelow: 50, warnDaily: true });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -890,7 +946,8 @@ body.is-locked .wrap { visibility: hidden; }
     const spent = sum(active().filter(e => e.kind !== "in"), e => e.amount);
     const added = sum(active().filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
-    return { income, costs, savings, spent, added, rest, avail: rest + added - spent };
+    const reserved = sum(state.reserved, r => r.amount);
+    return { income, costs, savings, spent, added, rest, reserved, avail: rest + added - spent - reserved };
   }
 
   function nextPayday(day, from) {
@@ -914,7 +971,12 @@ body.is-locked .wrap { visibility: hidden; }
     renderSpending(t);
     renderToday(t);
     renderNextMonth(t);
+    registerCats(state.customCats);
     renderHomeCards(t);
+    renderReserved();
+    renderPrices();
+    renderCatManage();
+    renderBank(t);
     renderWeek();
     renderWhatIf(t);
     renderCalendar();
@@ -939,6 +1001,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("eqRest").textContent = fmt(t.rest);
     $("eqAdded").textContent = "+ " + fmt(t.added);
     $("eqSpent").textContent = "− " + fmt(t.spent);
+    $("eqRes").textContent = "− " + fmt(t.reserved); $("eqRes").hidden = $("eqResL").hidden = !t.reserved;
     $("eqAvail").textContent = fmt(t.avail);
 
     if (!t.income) {
@@ -949,6 +1012,7 @@ body.is-locked .wrap { visibility: hidden; }
       $("perDay").innerHTML = t.avail < 0
         ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`
         : `Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`;
+      if (t.reserved) $("perDay").innerHTML += ` · <span class="hint">${fmt(t.reserved)} vorgemerkt</span>`;
     } else {
       $("perDay").innerHTML = t.avail < 0 ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span>` : "";
     }
@@ -956,7 +1020,7 @@ body.is-locked .wrap { visibility: hidden; }
 
     // ring: fixed costs (grey), spending (orange), what is still free (green); full circle = income plus deposits
     const base = Math.max(t.income + t.added, t.costs + t.spent) || 1;
-    const spentShown = Math.min(t.spent, Math.max(t.rest + t.added, 0));
+    const spentShown = Math.min(t.spent + t.reserved, Math.max(t.rest + t.added, 0));
     const free = Math.max(t.avail, 0);
     const R = 110, C = 2 * Math.PI * R;
     const segs = [[Math.min(t.costs, base), "var(--ring-base)"], [spentShown, "var(--spent)"], [free, "var(--good)"]].filter(([v]) => v > 0);
@@ -1110,6 +1174,106 @@ body.is-locked .wrap { visibility: hidden; }
     $("wifResult").innerHTML = html;
   }
 
+  // --- money set aside for something that is still to come ---
+  function renderReserved() {
+    const list = [...state.reserved].sort((a, b) => (a.date || "9").localeCompare(b.date || "9"));
+    $("resList").hidden = !list.length;
+    $("resList").innerHTML = `<div class="lock-head"><strong>Vorgemerkt</strong><span class="label">schon von „verfügbar“ abgezogen</span></div>`
+      + list.map(r => `<div class="res-row"><span>${esc(r.name)}<small>${r.date ? "ca. " + fmtDate(r.date) : "ohne Datum"}</small></span><span class="num">${fmt(r.amount)}</span>`
+        + `<span class="actions"><button class="btn small" type="button" data-res-buy="${r.id}">Gekauft</button><button class="icon" type="button" data-res-del="${r.id}" aria-label="${esc(r.name)} löschen">✕</button></span></div>`).join("")
+      + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(list, r => r.amount))}</span></div>`;
+  }
+
+  // --- price changes of fixed costs in the last 90 days ---
+  function renderPrices() {
+    const recent = state.items.filter(it => it.prev && (new Date() - new Date(it.prev.date + "T12:00:00")) / 86400000 < 90);
+    $("priceBox").hidden = !recent.length;
+    $("priceBox").innerHTML = `<div class="lock-head"><strong>Preisänderungen</strong><span class="label">letzte 3 Monate</span></div>`
+      + recent.map(it => { const d = it.amount - it.prev.amount; return `<div class="due-row"><span class="num ${d > 0 ? "minus" : "plus"}">${d > 0 ? "+" : "−"}${fmt(Math.abs(d))}</span><span class="due-name">${esc(it.name)}</span><span class="num">${fmt(it.prev.amount)} → ${fmt(it.amount)}</span></div>`; }).join("")
+      + (() => { const d = sum(recent, it => monthly(it) - it.prev.amount / (it.every || 1)); return Math.abs(d) >= 0.01 ? `<p class="hint">Zusammen ${d > 0 ? "zahlst du jetzt" : "sparst du jetzt"} ${fmt(Math.abs(d))} ${d > 0 ? "mehr" : ""} im Monat, also ${fmt(Math.abs(d) * 12)} im Jahr.</p>` : ""; })();
+  }
+
+  // --- own categories ---
+  function renderCatManage() {
+    $("catOwn").innerHTML = state.customCats.length ? state.customCats.map(c => `<div class="cat-own"><span>${esc(c.icon)} ${esc(c.name)}</span><button class="icon" type="button" data-cat-del="${esc(c.name)}" aria-label="${esc(c.name)} löschen">✕</button></div>`).join("")
+      : `<p class="hint">Noch keine eigenen Kategorien.</p>`;
+  }
+
+  // --- bank balance check: what should be on the account according to the app ---
+  function bankExpected(t) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const end = periodWindow().end, open = [], saved = [];
+    let undated = 0;
+    for (const it of state.items) {
+      if (!it.due) { undated++; continue; }
+      const next = nextDue(it, now); if (!next) continue;
+      if (it.every > 1 && !isFull(it)) {
+        // a share is set aside every month and stays on the account until the debit
+        const last = new Date(next); last.setMonth(last.getMonth() - it.every);
+        const months = Math.min(it.every, Math.max(1, (now.getFullYear() - last.getFullYear()) * 12 + now.getMonth() - last.getMonth()));
+        const share = next > now && next < end ? it.amount : round2(monthly(it) * months);
+        if (share) saved.push([it, share]);
+      } else if (next > now && next < end && costNow(it)) open.push([it, costNow(it)]);
+    }
+    const openSum = sum(open, ([, v]) => v), savedSum = sum(saved, ([, v]) => v);
+    return { open, saved, openSum, savedSum, undated, expected: t.avail + t.reserved + openSum + savedSum };
+  }
+  function renderBank(t) {
+    const b = state.balance;
+    $("menuBank").textContent = b ? `Zuletzt geprüft am ${fmtDate(b.date)}` : "Prüfen, ob dein Konto zur App passt";
+    if (!b) { $("bankResult").hidden = true; return; }
+    const x = bankExpected(t), diff = round2(b.amount - x.expected);
+    const row = (label, v, sub) => `<div class="nm-row"><span>${label}${sub ? `<small class="hint" style="display:block">${sub}</small>` : ""}</span><span class="num">${v < 0 ? "−" : "+"} ${fmt(Math.abs(v))}</span></div>`;
+    $("bankResult").hidden = false;
+    $("bankResult").innerHTML = `<div class="lock-head"><strong>So viel sollte drauf sein</strong><span class="label">${fmtDate(b.date)}</span></div>`
+      + row("Noch verfügbar", t.avail)
+      + (t.reserved ? row("Vorgemerkt (noch nicht ausgegeben)", t.reserved) : "")
+      + (x.openSum ? row("Fixkosten, die noch abgebucht werden", x.openSum, x.open.map(([it]) => esc(it.name)).join(", ")) : "")
+      + (x.savedSum ? row("Angespart für seltene Abbuchungen", x.savedSum, x.saved.map(([it]) => esc(it.name)).join(", ")) : "")
+      + `<div class="nm-row sum"><span>Erwartet</span><span class="num">${fmt(x.expected)}</span></div>`
+      + `<div class="nm-row"><span>Dein Kontostand</span><span class="num">${fmt(b.amount)}</span></div>`
+      + (Math.abs(diff) < 1 ? `<p class="verdict plus">✅ Passt! Dein Konto und die App stimmen überein.</p>`
+        : `<p class="verdict ${diff < 0 ? "minus" : "plus"}">Auf dem Konto sind ${fmt(Math.abs(diff))} ${diff < 0 ? "weniger" : "mehr"} als erwartet.</p>`
+          + `<p class="hint">${diff < 0 ? "Vielleicht hast du eine Ausgabe nicht eingetragen, oder eine Fixkosten-Abbuchung kam früher als gedacht." : "Vielleicht ist eine Abbuchung noch nicht durch, oder eine Einzahlung fehlt in der App."}</p>`
+          + `<button class="btn dark small" type="button" id="bankFix">Unterschied als ${diff < 0 ? "Ausgabe" : "Einzahlung"} eintragen</button>`)
+      + (x.undated ? `<p class="hint">${x.undated} Fixkosten haben kein Abbuchungsdatum. Für die nimmt die App an, dass sie diesen Monat schon abgebucht sind.</p>` : "");
+  }
+
+  // --- saving hints from the person's own numbers ---
+  function savingHints(t) {
+    const out = [];
+    const w = periodWindow(), now = new Date();
+    const total = Math.max((w.end - w.start) / 86400000, 1), gone = Math.min(Math.max((now - w.start) / 86400000, 0), total);
+    const by = spendByCat(), spent = sum(Object.values(by), v => v);
+    if (t.income && gone >= 3 && spent > 0) {
+      const projected = spent / gone * total, endLeft = t.avail - (projected - spent);
+      out.push(endLeft < 0 ? ["📉", `Wenn du so weitermachst wie bisher, wärst du am Monatsende ca. <b class="minus">${fmt(-endLeft)} im Minus</b>.`, true]
+        : ["📈", `Wenn du so weitermachst wie bisher, bleiben am Monatsende ca. <b class="plus">${fmt(endLeft)}</b> übrig.`, false]);
+    }
+    const past = state.history.filter(h => h.byCat && h.start);
+    if (past.length && gone >= 3) {
+      const frac = gone / total, cats = {};
+      past.forEach(h => Object.entries(h.byCat).forEach(([k, v]) => { if (k !== CARRY_CAT && k !== "Korrektur") cats[k] = (cats[k] || 0) + v / past.length; }));
+      Object.entries(cats).map(([k, avg]) => [k, avg * frac, by[k] || 0]).filter(([, exp]) => exp >= 10)
+        .map(([k, exp, cur]) => [k, exp, cur, (cur - exp) / exp]).sort((a, b) => Math.abs(b[3]) - Math.abs(a[3])).slice(0, 3)
+        .forEach(([k, exp, cur, r]) => {
+          if (r > 0.3 && cur - exp > 15) out.push([SPEND_CATS[k]?.[0] || "💡", `${esc(k)}: bisher ${fmt(cur)}, sonst um diese Zeit ca. ${fmt(exp)}. Das sind <b class="minus">${Math.round(r * 100)} % mehr</b> als üblich.`, true]);
+          else if (r < -0.3 && exp - cur > 15) out.push([SPEND_CATS[k]?.[0] || "💡", `${esc(k)}: bisher ${fmt(cur)}, sonst um diese Zeit ca. ${fmt(exp)}. <b class="plus">Weniger als üblich</b> 👍`, false]);
+        });
+    }
+    const big = active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && e.cat !== "Korrektur").sort((a, b) => b.amount - a.amount)[0];
+    if (big && spent > 0 && big.amount / spent > 0.25) out.push(["🔎", `Deine größte Ausgabe diesen Monat: ${esc(big.name)} mit ${fmt(big.amount)}, das ist ${Math.round(big.amount / spent * 100)} % von allem.`, false]);
+    const later = sum(state.expenses.filter(isLater), e => e.amount);
+    if (later > 0 && t.avail > 0 && later > t.avail * 0.5) out.push(["⏳", `Mit „später bezahlen“ kommen noch ${fmt(later)} auf dich zu. Das ist viel im Vergleich zu dem, was gerade frei ist.`, true]);
+    return out;
+  }
+  function renderHints(t) {
+    const h = savingHints(t);
+    $("hintBox").innerHTML = h.length ? h.map(([ico, text]) => `<div class="hint-item"><span aria-hidden="true">${ico}</span><span>${text}</span></div>`).join("")
+      : `<p class="hint">Sobald ein paar Tage mit Einträgen da sind, findest du hier Hinweise aus deinen eigenen Zahlen.</p>`;
+    return h.find(x => x[2]);
+  }
+
   // small cards on the overview: wage day reached, open debts
   function payReached() {
     if (!state.payday || !state.periodStart) return false;
@@ -1121,7 +1285,9 @@ body.is-locked .wrap { visibility: hidden; }
     const parts = [owed ? `Dir schuldet man <b class="num">${fmt(owed)}</b>` : "", owe ? `Du schuldest <b class="num">${fmt(owe)}</b>` : ""].filter(Boolean);
     const ending = state.items.filter(endingSoon);
     const wk = new Date().getDay() === 1 || new Date().getDay() === 2 ? weekStats() : null;
+    const tip = renderHints(t);
     $("homeCards").innerHTML = (ending.length ? `<button class="mini-card" type="button" data-go="costs"><span class="m-ico" aria-hidden="true">📅</span><span>${ending.length === 1 ? `${esc(ending[0].name)} ${ending[0].ends < today() ? "ist am" : "läuft am"} ${fmtDate(ending[0].ends)} ${ending[0].ends < today() ? "ausgelaufen" : "aus"}` : `${ending.length} Verträge laufen bald aus`}<small>${ending.length > 1 ? ending.map(i => esc(i.name)).join(", ") + " · " : ""}Rechtzeitig kündigen oder wechseln?</small></span><b aria-hidden="true">›</b></button>` : "")
+      + (tip ? `<button class="mini-card" type="button" data-go="stats"><span class="m-ico" aria-hidden="true">💡</span><span>Spar-Hinweis<small>${tip[1].replace(/<[^>]+>/g, "")}</small></span><b aria-hidden="true">›</b></button>` : "")
       + (wk && (wk.last || wk.before) ? `<button class="mini-card" type="button" data-go="stats"><span class="m-ico" aria-hidden="true">🗓️</span><span>Letzte Woche: <strong class="num">${fmt(wk.last)}</strong> ausgegeben<small>${weekText(wk)}</small></span><b aria-hidden="true">›</b></button>` : "")
       + (t.income && payReached() ? `<button class="mini-card pay" type="button" data-home="pay"><span class="m-ico" aria-hidden="true">💶</span><span>Ist dein Lohn schon da?<small>Tipp hier, um den neuen Monat zu starten.</small></span><b aria-hidden="true">›</b></button>` : "")
       + (parts.length ? `<button class="mini-card" type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small>${parts.join(" · ")}</small></span><b aria-hidden="true">›</b></button>` : "");
@@ -1140,6 +1306,7 @@ body.is-locked .wrap { visibility: hidden; }
       add(day, { type: e.kind === "in" ? "in" : isLater(e) ? "later" : "out", ico: e.kind === "in" ? "💶" : SPEND_CATS[e.cat]?.[0] || "📦",
         name: e.name, sub: e.payOn ? `später bezahlt, gekauft am ${fmtDate(e.date)}` : e.kind === "in" ? "Einzahlung" : e.cat, amount: e.kind === "in" ? e.amount : -e.amount });
     }
+    for (const r of state.reserved) if (inMonth(r.date)) add(r.date, { type: "res", ico: "📌", name: r.name, sub: "vorgemerkt", amount: -r.amount });
     const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
     for (const it of state.items) {
       let d = nextDue(it, first);
@@ -1154,7 +1321,7 @@ body.is-locked .wrap { visibility: hidden; }
     }
     return ev;
   }
-  const CAL_COLORS = { pay: "var(--good)", in: "var(--good)", cost: "var(--ring-base)", out: "var(--spent)", later: "var(--c4)" };
+  const CAL_COLORS = { pay: "var(--good)", in: "var(--good)", cost: "var(--ring-base)", out: "var(--spent)", later: "var(--c4)", res: "var(--c6)" };
   function renderCalendar() {
     const y = calMonth.getFullYear(), m = calMonth.getMonth(), ev = calEvents(y, m), days = new Date(y, m + 1, 0).getDate();
     $("calLabel").textContent = calMonth.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
@@ -1311,6 +1478,7 @@ body.is-locked .wrap { visibility: hidden; }
     }
     const net = t.added - t.spent;
     $("spendSum").innerHTML = list.length ? `Summe: <span class="num ${net >= 0 ? "plus" : "minus"}">${net >= 0 ? "+" : "−"} ${fmt(Math.abs(net))}</span>` : "";
+    t = { ...t, avail: t.avail + t.reserved };
     $("carryText").innerHTML = t.avail > 0 ? `Übrige ${fmt(t.avail)} als Einzahlung in den neuen Zeitraum mitnehmen`
       : t.avail < 0 ? `<span class="minus">Minus von ${fmt(-t.avail)}</span> vom neuen Lohn abziehen`
       : "Übriges Geld mitnehmen (gerade ist nichts übrig)";
@@ -1362,6 +1530,7 @@ body.is-locked .wrap { visibility: hidden; }
     const per = it.every > 1 ? `<div class="meta num">${fmt(it.amount)} pro Abbuchung, ${full ? "wird im Abbuchungsmonat ganz abgezogen" : `jeden Monat ${fmt(monthly(it))} weglegen`}</div>` : "";
     const due = nextDue(it);
     const when = (due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "")
+      + (it.prev ? `<div class="meta num ${it.amount > it.prev.amount ? "warn-text" : "plus"}">Vorher ${fmt(it.prev.amount)}, seit ${fmtDate(it.prev.date)} ${it.amount > it.prev.amount ? "teurer" : "günstiger"} (${it.amount > it.prev.amount ? "+" : "−"}${fmt(Math.abs(it.amount - it.prev.amount))})</div>` : "")
       + (it.ends ? `<div class="meta num${endingSoon(it) ? " warn-text" : ""}">${it.ends < today() ? "Ausgelaufen am" : "Läuft aus am"} ${fmtDate(it.ends, true)}</div>` : "");
     const missing = it.mode === "full" && it.every > 1 && !it.due ? `<div class="meta warn-text">Für „ganz im Abbuchungsmonat“ fehlt das Datum. Bis dahin wird anteilig gerechnet.</div>` : "";
     return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
@@ -1402,6 +1571,12 @@ body.is-locked .wrap { visibility: hidden; }
   function normalize(d) {
     const s = blank();
     if (!d || typeof d !== "object") return s;
+    const seen = new Set(Object.keys(SPEND_CATS).filter(k => !ownCats.includes(k)));
+    s.customCats = Array.isArray(d.customCats) ? d.customCats.filter(c => { const n = c && String(c.name || "").trim(); if (!n || seen.has(n)) return false; seen.add(n); return true; })
+      .map(c => ({ name: String(c.name).trim().slice(0, 20), icon: String(c.icon || "🏷️").slice(0, 4) })) : [];
+    registerCats(s.customCats);
+    s.reserved = Array.isArray(d.reserved) ? d.reserved.filter(r => r && r.name).map(r => ({ id: String(r.id || uid()), name: String(r.name), amount: Number(r.amount) || 0, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? r.date : null })) : [];
+    s.balance = d.balance && Number.isFinite(Number(d.balance.amount)) ? { amount: Number(d.balance.amount), date: String(d.balance.date || "") } : null;
     s.mainIncome = Number(d.mainIncome) || 0;
     s.minijob = Number(d.minijob) || 0;
     const pd = Math.round(Number(d.payday));
@@ -1409,7 +1584,8 @@ body.is-locked .wrap { visibility: hidden; }
     s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
       id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
       amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1), mode: i.mode === "full" ? "full" : "spread",
-      due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null, ends: /^\d{4}-\d{2}-\d{2}$/.test(i.ends) ? i.ends : null
+      due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null, ends: /^\d{4}-\d{2}-\d{2}$/.test(i.ends) ? i.ends : null,
+      prev: i.prev && Number.isFinite(Number(i.prev.amount)) ? { amount: Number(i.prev.amount), date: String(i.prev.date || "") } : null
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
@@ -1513,10 +1689,12 @@ body.is-locked .wrap { visibility: hidden; }
   }
   document.querySelectorAll(".seg button[data-kind]").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
   function renderCatPick() {
-    $("catPick").innerHTML = PICK_CATS.map(c => `<button type="button" data-cat="${c}" aria-pressed="${c === spendCat}"><span aria-hidden="true">${SPEND_CATS[c][0]}</span> ${c}</button>`).join("");
+    $("catPick").innerHTML = PICK_CATS.map(c => `<button type="button" data-cat="${esc(c)}" aria-pressed="${c === spendCat}"><span aria-hidden="true">${esc(SPEND_CATS[c][0])}</span> ${esc(c)}</button>`).join("")
+      + `<button type="button" data-cat-add aria-expanded="${!$("catManage").hidden}">＋ Eigene</button>`;
   }
   renderCatPick();
   $("catPick").addEventListener("click", e => {
+    if (e.target.closest("[data-cat-add]")) { $("catManage").hidden = !$("catManage").hidden; renderCatManage(); renderCatPick(); if (!$("catManage").hidden) $("catIcon").focus(); return; }
     const b = e.target.closest("[data-cat]"); if (!b) return;
     spendCat = b.dataset.cat; renderCatPick();
   });
@@ -1531,6 +1709,63 @@ body.is-locked .wrap { visibility: hidden; }
     const b = e.target.closest("[data-clear]"); if (!b) return;
     const input = $(b.dataset.clear); if (!input) return;
     input.value = ""; input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  // --- events: own categories ---
+  $("catAdd").addEventListener("click", () => {
+    const name = $("catName").value.trim(), icon = $("catIcon").value.trim() || "🏷️";
+    if (!name) { $("catName").focus(); return; }
+    if (SPEND_CATS[name]) { $("catName").select(); return; }
+    state.customCats.push({ name, icon }); registerCats(state.customCats);
+    spendCat = name; $("catName").value = $("catIcon").value = "";
+    renderCatPick(); scheduleSave();
+  });
+  $("catOwn").addEventListener("click", e => {
+    const b = e.target.closest("[data-cat-del]"); if (!b) return;
+    const name = b.dataset.catDel;
+    state.customCats = state.customCats.filter(c => c.name !== name);
+    state.expenses.forEach(x => { if (x.cat === name) x.cat = "Sonstiges"; });
+    if (spendCat === name) spendCat = "Sonstiges";
+    registerCats(state.customCats); renderCatPick(); scheduleSave();
+  });
+
+  // --- events: reserve money ---
+  const showResForm = on => { $("resForm").hidden = !on; $("entryQuick").hidden = on; if (on) $("resAmount").focus(); };
+  $("resOpen").addEventListener("click", () => showResForm(true));
+  $("resClose").addEventListener("click", () => showResForm(false));
+  $("resForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = parseEuro($("resAmount").value);
+    if (Number.isNaN(amount) || amount <= 0) { $("resAmount").focus(); return; }
+    state.reserved.push({ id: uid(), name: $("resName").value.trim(), amount, date: $("resDate").value || null });
+    $("resAmount").value = $("resName").value = $("resDate").value = "";
+    showResForm(false); scheduleSave();
+  });
+  $("resList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.resDel) { state.reserved = state.reserved.filter(r => r.id !== b.dataset.resDel); scheduleSave(); }
+    else if (b.dataset.resBuy) {
+      const r = state.reserved.find(x => x.id === b.dataset.resBuy); if (!r) return;
+      state.reserved = state.reserved.filter(x => x !== r);
+      state.expenses.push({ id: uid(), kind: "out", name: r.name, amount: r.amount, date: today(), cat: "Sonstiges", payOn: null });
+      toast(`<p>„${esc(r.name)}“ ist jetzt als Ausgabe eingetragen. Betrag oder Kategorie kannst du mit ✎ ändern.</p>`);
+      scheduleSave();
+    }
+  });
+
+  // --- events: bank balance check ---
+  $("bankForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = parseEuro($("bankAmount").value);
+    if (Number.isNaN(v)) { $("bankAmount").focus(); return; }
+    state.balance = { amount: v, date: today() }; scheduleSave();
+  });
+  $("bankResult").addEventListener("click", e => {
+    if (!e.target.closest("#bankFix") || !state.balance) return;
+    const diff = round2(state.balance.amount - bankExpected(totals()).expected);
+    if (Math.abs(diff) < 0.01) return;
+    state.expenses.push({ id: uid(), kind: diff > 0 ? "in" : "out", name: "Kontostand-Abgleich", amount: Math.abs(diff), date: today(), cat: "Korrektur", payOn: null });
+    scheduleSave();
   });
 
   // --- events: what-if ---
@@ -1579,7 +1814,7 @@ body.is-locked .wrap { visibility: hidden; }
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -1672,7 +1907,7 @@ body.is-locked .wrap { visibility: hidden; }
   $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
   $("resetYes").addEventListener("click", () => {
     const t = totals(), now = new Date().toISOString();
-    const carried = $("carryOver").checked ? round2(t.avail) : 0;
+    const carried = $("carryOver").checked ? round2(t.avail + t.reserved) : 0;
     state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat(),
       income: round2(t.income), costs: round2(t.costs), savings: round2(t.savings), extra: round2(extraIn()) }, ...state.history].slice(0, 24);
     const later = state.expenses.filter(isLater);
@@ -1748,6 +1983,7 @@ body.is-locked .wrap { visibility: hidden; }
     const f = e.target, it = state.items.find(i => i.id === f.dataset.form); if (!it) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
+    if (round2(amount) !== round2(it.amount)) it.prev = { amount: it.amount, date: today() };
     Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, ends: f.ends.value || null, mode: f.mode.value === "full" ? "full" : "spread" });
     editingCost = null; scheduleSave();
   });
