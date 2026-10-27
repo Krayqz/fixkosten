@@ -321,6 +321,17 @@ th, td { border-bottom-color: var(--line); }
 .col.now .col-lbl { color: var(--good); font-weight: 700; }
 .cmp-text { font-size: .88rem; color: #b9c6bf; }
 .cmp-now { display: flex; justify-content: space-between; font-weight: 600; }
+.year-nav { display: flex; align-items: center; gap: 2px; font-weight: 700; }
+.year-nav .icon { font-size: 1.3rem; }
+.year-nav .icon:disabled { opacity: .3; cursor: default; }
+.year-big { display: grid; gap: 2px; }
+.year-big small { color: var(--muted); font-size: .8rem; }
+.year-big b { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
+.year-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.year-grid .stat { background: var(--surface-2); }
+.year-grid .stat span { display: block; font-size: .72rem; color: var(--muted); }
+.year-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.box .ring-keys { justify-content: flex-start; flex-wrap: wrap; gap: 6px 14px; }
 
 /* warnings, toast, lock */
 .warn { background: #2a1512; border: 1px solid #5a2a24; color: #ffd2cc; border-radius: 14px; padding: 10px 14px; display: grid; gap: 4px; font-size: .9rem; }
@@ -481,6 +492,13 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="box" id="catStats"></div>
       <div class="panel-head"><h2 id="cmpH">Vergleich mit den letzten Monaten</h2></div>
       <div class="box" id="compare"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="yearH">
+      <div class="panel-head"><h2 id="yearH">Jahresübersicht</h2>
+        <div class="year-nav"><button class="icon" type="button" id="yearPrev" aria-label="Jahr davor">‹</button><span class="num" id="yearLabel"></span><button class="icon" type="button" id="yearNext" aria-label="Jahr danach">›</button></div>
+      </div>
+      <div class="box" id="year"></div>
     </section>
 
     <section class="panel" aria-labelledby="incH">
@@ -694,6 +712,7 @@ body.is-locked .wrap { visibility: hidden; }
     renderWarn(t);
     renderSettings();
     renderStats(t);
+    renderYear(t);
     renderLedger(t);
     renderHistory();
   }
@@ -759,6 +778,8 @@ body.is-locked .wrap { visibility: hidden; }
     state.expenses.filter(e => e.kind !== "in" && e.cat !== CARRY_CAT).forEach(e => { out[e.cat] = round2((out[e.cat] || 0) + e.amount); });
     return out;
   }
+  // money that came in on top of the wage (carried-over rest from last month is not new money)
+  const extraIn = () => sum(state.expenses.filter(e => e.kind === "in" && e.cat !== CARRY_CAT), e => e.amount);
   const everyday = h => h.byCat ? sum(Object.entries(h.byCat).filter(([k]) => k !== CARRY_CAT), ([, v]) => v) : h.spent;
 
   function dayBudget(t) {
@@ -837,6 +858,44 @@ body.is-locked .wrap { visibility: hidden; }
         <span class="col-val num">${Math.round(b.value)} €</span><div class="col-bar"><span style="height:${Math.max((b.value / max) * 100, 2)}%"></span></div><span class="col-lbl">${esc(b.label)}</span></div>`).join("")}</div>
       <p class="cmp-text">${verdict} Im Schnitt gibst du <b class="num">${fmt(avg)}</b> pro Monat aus (ohne Fixkosten).</p>`;
   }
+
+  // one row per wage period (history plus the running one), grouped by the year the wage came in
+  let yearShown = new Date().getFullYear();
+  function periods(t) {
+    const cur = { start: state.periodStart || new Date().toISOString(), income: t.income, costs: t.costs, savings: t.savings, extra: extraIn(), spent: everyday({ byCat: spendByCat() }), current: true };
+    // the very first entry can be an empty "reset" without a start; it is not a real month
+    const past = state.history.filter(h => h.start || h.spent || h.added).map(h => ({
+      start: h.start || h.end, income: h.income ?? t.income, costs: h.costs ?? t.costs, savings: h.savings ?? t.savings,
+      extra: h.extra ?? 0, spent: everyday(h), guessed: h.income === undefined
+    }));
+    return [cur, ...past].map(x => ({ ...x, year: new Date(x.start).getFullYear() }));
+  }
+  function renderYear(t) {
+    const all = periods(t);
+    const years = [...new Set(all.map(x => x.year))].sort();
+    if (!years.includes(yearShown)) yearShown = years[years.length - 1];
+    const list = all.filter(x => x.year === yearShown);
+    $("yearLabel").textContent = yearShown;
+    $("yearPrev").disabled = yearShown <= years[0];
+    $("yearNext").disabled = yearShown >= years[years.length - 1];
+    if (!t.income && !list.some(x => x.income)) { $("year").innerHTML = `<p class="hint">Trag dein Einkommen ein, dann rechnet die Seite hier dein Jahr zusammen.</p>`; return; }
+    const earned = sum(list, x => x.income + x.extra), costs = sum(list, x => x.costs), saved = sum(list, x => x.savings);
+    const spent = sum(list, x => x.spent), rest = earned - costs - spent;
+    const n = list.length;
+    $("year").innerHTML = `
+      <div class="year-big"><small>Verdient in ${yearShown}</small><b class="num">${fmt(earned)}</b><span class="hint">${n === 1 ? "1 Monat" : n + " Monate"} mit Lohn${list.some(x => x.current) ? ", der laufende zählt schon mit" : ""}</span></div>
+      <div class="year-grid">
+        <div class="stat"><small>Fixkosten</small><b class="num">${fmt(costs - saved)}</b><span>ohne Sparen</span></div>
+        <div class="stat"><small>Gespart</small><b class="num plus">${fmt(saved)}</b><span>${earned ? Math.round((saved / earned) * 100) + " % vom Geld" : ""}</span></div>
+        <div class="stat"><small>Ausgegeben</small><b class="num spent">${fmt(spent)}</b><span>Alltag, ohne Fixkosten</span></div>
+        <div class="stat"><small>Übrig geblieben</small><b class="num ${rest < 0 ? "minus" : ""}">${fmt(rest)}</b><span>${rest < 0 ? "mehr ausgegeben als da war" : "nicht verplant"}</span></div>
+      </div>
+      <div class="year-bar" role="img" aria-label="Aufteilung des Jahres">${[[costs - saved, "var(--ring-base)"], [saved, "var(--good)"], [spent, "var(--spent)"], [Math.max(rest, 0), "var(--c1)"]].filter(([v]) => v > 0).map(([v, c]) => `<span style="flex:${v};background:${c}"></span>`).join("")}</div>
+      <div class="ring-keys"><span><i style="background:var(--ring-base)"></i>Fixkosten</span><span><i style="background:var(--good)"></i>Gespart</span><span><i style="background:var(--spent)"></i>Ausgaben</span><span><i style="background:var(--c1)"></i>Übrig</span></div>
+      ${list.some(x => x.guessed) ? `<p class="hint">Für ältere Monate kennt die Seite Einkommen und Fixkosten nicht genau und nimmt deine heutigen Werte. Ab jetzt wird beim „Neuer Lohn ist da“ alles gespeichert.</p>` : ""}`;
+  }
+  $("yearPrev").addEventListener("click", () => { yearShown--; render(); });
+  $("yearNext").addEventListener("click", () => { yearShown++; render(); });
 
   function renderIncome(t) {
     $("incomeTotal").textContent = fmt(t.income);
@@ -945,7 +1004,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
       date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today(),
-      cat: SPEND_CATS[e.cat] ? e.cat : e.name === "Korrektur" ? "Korrektur" : e.name === "Minus aus dem Vormonat" ? CARRY_CAT : "Sonstiges"
+      cat: SPEND_CATS[e.cat] ? e.cat : e.name === "Korrektur" ? "Korrektur" : e.name === "Minus aus dem Vormonat" || e.name === "Übrig vom letzten Lohn" ? CARRY_CAT : "Sonstiges"
     })) : [];
     s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
     if ("warnBelow" in d) s.warnBelow = d.warnBelow === null || d.warnBelow === "" ? null : Number(d.warnBelow) || 0;
@@ -953,6 +1012,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.history = Array.isArray(d.history) ? d.history.filter(h => h && h.end).slice(0, 24).map(h => ({
       start: typeof h.start === "string" ? h.start : null, end: String(h.end),
       spent: Number(h.spent) || 0, added: Number(h.added) || 0, carried: Number(h.carried) || 0,
+      ...Object.fromEntries(["income", "costs", "savings", "extra"].filter(k => Number.isFinite(Number(h[k])) && h[k] !== null && h[k] !== undefined).map(k => [k, Number(h[k])])),
       ...(h.byCat && typeof h.byCat === "object" ? { byCat: Object.fromEntries(Object.entries(h.byCat).filter(([k]) => SPEND_CATS[k]).map(([k, v]) => [k, Number(v) || 0])) } : {})
     })) : [];
     return s;
@@ -1088,9 +1148,10 @@ body.is-locked .wrap { visibility: hidden; }
   $("resetYes").addEventListener("click", () => {
     const t = totals(), now = new Date().toISOString();
     const carried = $("carryOver").checked ? round2(t.avail) : 0;
-    state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat() }, ...state.history].slice(0, 24);
+    state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat(),
+      income: round2(t.income), costs: round2(t.costs), savings: round2(t.savings), extra: round2(extraIn()) }, ...state.history].slice(0, 24);
     state.expenses = !carried ? []
-      : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today() }]
+      : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today(), cat: CARRY_CAT }]
       : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }];
     state.periodStart = now;
     editingSpend = null;
