@@ -321,6 +321,13 @@ th, td { border-bottom-color: var(--line); }
 .col.now .col-lbl { color: var(--good); font-weight: 700; }
 .cmp-text { font-size: .88rem; color: #b9c6bf; }
 .cmp-now { display: flex; justify-content: space-between; font-weight: 600; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(10, 13, 12, .94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--line); padding: 6px max(4px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
+.tabbar button { border: 0; background: none; color: var(--muted); display: grid; justify-items: center; gap: 2px; font: 600 .68rem var(--body); padding: 4px 0; cursor: pointer; min-height: 48px; }
+.tabbar button span { font-size: 1.25rem; line-height: 1.2; }
+.tabbar button[aria-current] { color: var(--good); }
+.tabbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
+.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+.toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .year-nav { display: flex; align-items: center; gap: 2px; font-weight: 700; }
 .year-nav .icon { font-size: 1.3rem; }
 .year-nav .icon:disabled { opacity: .3; cursor: default; }
@@ -402,7 +409,7 @@ body.is-locked .wrap { visibility: hidden; }
 
   <div id="app" hidden>
 
-  <section class="hero" aria-label="Übersicht">
+  <section class="hero" aria-label="Übersicht" data-tab="home">
     <div class="warn" id="warn" role="alert" hidden></div>
     <div class="ring-wrap">
       <svg class="ring" id="ring" viewBox="0 0 250 250" role="img" aria-label="Aufteilung des Geldes"></svg>
@@ -453,7 +460,7 @@ body.is-locked .wrap { visibility: hidden; }
   </section>
 
   <div class="cols">
-    <section class="panel" aria-labelledby="spendH">
+    <section class="panel" aria-labelledby="spendH" data-tab="entries">
       <div class="panel-head">
         <h2 id="spendH">Letzte Einträge</h2>
         <span class="label" id="spendSince"></span>
@@ -487,21 +494,21 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="anaH">
+    <section class="panel" aria-labelledby="anaH" data-tab="stats">
       <div class="panel-head"><h2 id="anaH">Wofür geht dein Geld weg?</h2><span class="label">seit dem Lohn</span></div>
       <div class="box" id="catStats"></div>
       <div class="panel-head"><h2 id="cmpH">Vergleich mit den letzten Monaten</h2></div>
       <div class="box" id="compare"></div>
     </section>
 
-    <section class="panel" aria-labelledby="yearH">
+    <section class="panel" aria-labelledby="yearH" data-tab="stats">
       <div class="panel-head"><h2 id="yearH">Jahresübersicht</h2>
         <div class="year-nav"><button class="icon" type="button" id="yearPrev" aria-label="Jahr davor">‹</button><span class="num" id="yearLabel"></span><button class="icon" type="button" id="yearNext" aria-label="Jahr danach">›</button></div>
       </div>
       <div class="box" id="year"></div>
     </section>
 
-    <section class="panel" aria-labelledby="incH">
+    <section class="panel" aria-labelledby="incH" data-tab="costs">
       <h2 id="incH">Einkommen</h2>
       <div class="field">
         <label for="mainIncome">Hauptjob, netto im Monat</label>
@@ -520,7 +527,7 @@ body.is-locked .wrap { visibility: hidden; }
     </section>
   </div>
 
-  <section class="panel" aria-labelledby="costH">
+  <section class="panel" aria-labelledby="costH" data-tab="costs">
     <div class="panel-head">
       <h2 id="costH">Alle Fixkosten</h2>
       <span class="label" id="costCount">0 Posten</span>
@@ -540,7 +547,7 @@ body.is-locked .wrap { visibility: hidden; }
   </section>
 
   <div class="cols">
-    <section class="panel" aria-labelledby="histH">
+    <section class="panel" aria-labelledby="histH" data-tab="stats">
       <h2 id="histH">Verlauf</h2>
       <div id="history"></div>
       <button class="btn ghost" type="button" id="clearHistBtn" hidden>Verlauf leeren</button>
@@ -553,7 +560,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="setH">
+    <section class="panel" aria-labelledby="setH" data-tab="more">
       <h2 id="setH">Warnungen und Sperre</h2>
       <div class="box">
         <div class="field">
@@ -583,7 +590,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="backupH">
+    <section class="panel" aria-labelledby="backupH" data-tab="more">
       <h2 id="backupH">Daten sichern</h2>
       <p class="hint">Lade ab und zu eine Sicherung herunter. Damit kannst du deine Daten wiederherstellen oder in eine andere Version der Seite mitnehmen.</p>
       <div class="btn-row">
@@ -601,6 +608,13 @@ body.is-locked .wrap { visibility: hidden; }
       <p class="hint" id="backupMsg" role="status"></p>
     </section>
   </div>
+  <nav class="tabbar" id="tabbar" aria-label="Bereiche">
+    <button type="button" data-go="home" aria-current="page"><span aria-hidden="true">◉</span>Übersicht</button>
+    <button type="button" data-go="entries"><span aria-hidden="true">☰</span>Einträge</button>
+    <button type="button" data-go="stats"><span aria-hidden="true">▥</span>Auswertung</button>
+    <button type="button" data-go="costs"><span aria-hidden="true">▤</span>Fixkosten</button>
+    <button type="button" data-go="more"><span aria-hidden="true">⚙︎</span>Mehr</button>
+  </nav>
   </div>
 </div>
 
@@ -1106,10 +1120,26 @@ body.is-locked .wrap { visibility: hidden; }
   });
   $("today").addEventListener("click", e => {
     if (!e.target.closest("[data-goto]")) return;
+    showTab("costs", true);
     $("payday").scrollIntoView({ behavior: "smooth", block: "center" });
     $("payday").focus({ preventScroll: true });
   });
+  // --- tabs: one area at a time, chosen in the bar at the bottom ---
+  const TAB_KEY = "fixkosten-tab";
+  function showTab(name, keepScroll) {
+    document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
+    document.querySelectorAll("#tabbar [data-go]").forEach(b => b.dataset.go === name ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    try { localStorage.setItem(TAB_KEY, name); } catch {}
+    if (!keepScroll) scrollTo(0, 0);
+  }
+  $("tabbar").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) showTab(b.dataset.go); });
+  $("chips").addEventListener("click", e => { if (e.target.closest(".chip")) { e.preventDefault(); showTab("costs"); } });
+  let startTab = "home";
+  try { const saved = localStorage.getItem(TAB_KEY); if (document.querySelector(`[data-go="${saved}"]`)) startTab = saved; } catch {}
+  showTab(startTab, true);
+
   document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => {
+    showTab("entries", true);
     setKind(b.dataset.quick);
     $("spendForm").scrollIntoView({ behavior: "smooth", block: "start" });
     $("spendAmount").focus({ preventScroll: true });
