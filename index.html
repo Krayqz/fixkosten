@@ -328,6 +328,13 @@ th, td { border-bottom-color: var(--line); }
 .tabbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+.due-row { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 8px; font-size: .92rem; }
+.due-date { color: var(--good); font-weight: 700; }
+.due-name { overflow-wrap: anywhere; }
+.due-row.total { border-top: 1px solid var(--line); padding-top: 8px; font-weight: 700; }
+.fields .hint.wide { grid-column: 1 / -1; }
+.fields.cost, .fields.edit4 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.fields.cost .wide, .fields.cost .btn, .fields.edit4 .wide { grid-column: 1 / -1; }
 .year-nav { display: flex; align-items: center; gap: 2px; font-weight: 700; }
 .year-nav .icon { font-size: 1.3rem; }
 .year-nav .icon:disabled { opacity: .3; cursor: default; }
@@ -537,12 +544,14 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field wide"><label for="newName">Was</label><input type="text" id="newName" placeholder="z. B. Handyvertrag" required></div>
         <div class="field"><label for="newCat">Kategorie</label><input type="text" id="newCat" list="catList" placeholder="Verträge" required></div>
         <div class="field"><label for="newAmount">Betrag</label><div class="money"><input id="newAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
-        <div class="field wide"><label for="newInterval">Wie oft</label>
-          <select id="newInterval"><option value="monthly">monatlich</option><option value="quarterly">vierteljährlich</option><option value="yearly">jährlich</option></select></div>
+        <div class="field"><label for="newEvery">Wie oft abgebucht</label><select id="newEvery"></select></div>
+        <div class="field"><label for="newDue">Nächste Abbuchung</label><input type="date" id="newDue"></div>
+        <span class="hint wide">Das Datum ist freiwillig. Dann siehst du, wann als Nächstes abgebucht wird.</span>
         <button class="btn" type="submit">Hinzufügen</button>
       </div>
     </form>
     <datalist id="catList"></datalist>
+    <div class="box" id="dueSoon" hidden></div>
     <div id="ledger"></div>
   </section>
 
@@ -650,7 +659,11 @@ body.is-locked .wrap { visibility: hidden; }
   const CARRY_CAT = "Übertrag";
   const EXTRA_COLORS = ["--c5", "--c1", "--c4", "--c6", "--c3", "--c8"];
   const SAVING_CAT = "Sparen";
-  const INTERVALS = { monthly: { div: 1, label: "monatlich", short: "" }, quarterly: { div: 3, label: "vierteljährlich", short: "vierteljährl." }, yearly: { div: 12, label: "jährlich", short: "jährlich" } };
+  // how often a fixed cost is debited: every 1 to 12 months (older data used named intervals)
+  const OLD_INTERVALS = { monthly: 1, quarterly: 3, yearly: 12 };
+  const everyLabel = n => n === 1 ? "monatlich" : n === 3 ? "alle 3 Monate" : n === 6 ? "halbjährlich" : n === 12 ? "jährlich" : `alle ${n} Monate`;
+  const everyOptions = sel => Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<option value="${n}"${n === sel ? " selected" : ""}>${n === 1 ? "jeden Monat" : n === 12 ? "einmal im Jahr" : `alle ${n} Monate`}</option>`).join("");
+  const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
   const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], periodStart: null, history: [], warnBelow: 50, warnDaily: true });
@@ -671,7 +684,19 @@ body.is-locked .wrap { visibility: hidden; }
     return Number.isFinite(n) ? round2(n) : NaN;
   };
   const toField = n => n ? n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-  const monthly = it => it.amount / (INTERVALS[it.interval]?.div || 1);
+  const monthly = it => it.amount / (it.every || 1);
+  // next debit on or after today, stepping from the date the person entered
+  function nextDue(it) {
+    if (!it.due) return null;
+    const [y, m, d] = it.due.split("-").map(Number);
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const at = k => { const mm = m - 1 + k * it.every; return new Date(y, mm, Math.min(d, new Date(y, mm + 1, 0).getDate())); };
+    let k = 0;
+    if (at(0) < now) k = Math.ceil(((now.getFullYear() - y) * 12 + now.getMonth() - (m - 1)) / it.every) - 1;
+    while (at(k) < now) k++;
+    while (k > 0 && at(k - 1) >= now) k--;
+    return at(k);
+  }
   const uid = () => Math.random().toString(36).slice(2, 10);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
@@ -954,11 +979,16 @@ body.is-locked .wrap { visibility: hidden; }
   }
 
   function renderLedger() {
+    const soon = state.items.map(it => [it, nextDue(it)]).filter(([, d]) => d && d - new Date() < 31 * 86400000).sort((a, b) => a[1] - b[1]);
+    $("dueSoon").hidden = !soon.length;
+    $("dueSoon").innerHTML = `<div class="lock-head"><strong>Wird bald abgebucht</strong><span class="label">nächste 30 Tage</span></div>`
+      + soon.map(([it, d]) => `<div class="due-row"><span class="num due-date">${fmtDate(isoDay(d))}</span><span class="due-name">${esc(it.name)}</span><span class="num">${fmt(it.amount)}</span></div>`).join("")
+      + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(soon, ([it]) => it.amount))}</span></div>`;
     $("costCount").textContent = state.items.length === 1 ? "1 Posten" : state.items.length + " Posten";
     $("catList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
     const groups = categories().map(cat => [cat, state.items.filter(i => i.category === cat)]).filter(([, l]) => l.length);
     if (!groups.length) {
-      $("ledger").innerHTML = `<div class="empty"><strong>Noch keine Fixkosten</strong>Trag oben deinen ersten Posten ein, zum Beispiel Miete, Handyvertrag oder Sparrate. Jährliche Beträge rechnet die Seite automatisch auf den Monat um.</div>`;
+      $("ledger").innerHTML = `<div class="empty"><strong>Noch keine Fixkosten</strong>Trag oben deinen ersten Posten ein, zum Beispiel Miete, Handyvertrag oder Sparrate. Beträge, die nur alle paar Monate abgebucht werden, rechnet die Seite automatisch auf den Monat um.</div>`;
       return;
     }
     $("ledger").innerHTML = groups.map(([cat, list]) => `<div class="group">
@@ -968,21 +998,22 @@ body.is-locked .wrap { visibility: hidden; }
     focusEditor("ledger");
   }
   function costRow(it) {
-    const iv = INTERVALS[it.interval];
-    const pill = iv.short ? `<span class="pill">${iv.short}</span>` : "";
-    const per = it.interval !== "monthly" ? `<div class="meta num">${fmt(it.amount)} ${iv.label}, also pro Monat</div>` : "";
-    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}</div>
+    const pill = it.every > 1 ? `<span class="pill">${everyLabel(it.every)}</span>` : "";
+    const per = it.every > 1 ? `<div class="meta num">${fmt(it.amount)} pro Abbuchung</div>` : "";
+    const due = nextDue(it);
+    const when = due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "";
+    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}</div>
       <span class="num">${fmt(monthly(it))}</span>
       <span class="actions"><button class="icon" type="button" data-edit="${it.id}" aria-label="${esc(it.name)} ändern">✎</button><button class="icon" type="button" data-del="${it.id}" aria-label="${esc(it.name)} löschen">✕</button></span></div>`;
   }
   function costEditor(it) {
-    const opts = Object.entries(INTERVALS).map(([k, v]) => `<option value="${k}"${k === it.interval ? " selected" : ""}>${v.label}</option>`).join("");
     return `<form class="editbox" data-form="${it.id}">
       <div class="fields edit4">
         <div class="field wide"><label for="ce-name">Was</label><input type="text" id="ce-name" name="name" value="${esc(it.name)}" required></div>
         <div class="field"><label for="ce-cat">Kategorie</label><input type="text" id="ce-cat" name="category" list="catList" value="${esc(it.category)}" required></div>
         <div class="field"><label for="ce-amt">Betrag</label><div class="money"><input id="ce-amt" name="amount" inputmode="decimal" value="${toField(it.amount)}" required><span>€</span></div></div>
-        <div class="field wide"><label for="ce-int">Wie oft</label><select id="ce-int" name="interval">${opts}</select></div>
+        <div class="field"><label for="ce-int">Wie oft abgebucht</label><select id="ce-int" name="every">${everyOptions(it.every)}</select></div>
+        <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
   }
@@ -1013,7 +1044,8 @@ body.is-locked .wrap { visibility: hidden; }
     s.payday = pd >= 1 && pd <= 31 ? pd : null;
     s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
       id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
-      amount: Number(i.amount) || 0, interval: INTERVALS[i.interval] ? i.interval : "monthly"
+      amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
@@ -1220,12 +1252,13 @@ body.is-locked .wrap { visibility: hidden; }
   $("clearHistYes").addEventListener("click", () => { state.history = []; $("clearHistConfirm").hidden = true; scheduleSave(); });
 
   // --- events: fixed costs ---
+  $("newEvery").innerHTML = everyOptions(1);
   $("costForm").addEventListener("submit", e => {
     e.preventDefault();
     const amount = parseEuro($("newAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("newAmount").focus(); return; }
-    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, interval: $("newInterval").value });
-    $("newName").value = ""; $("newAmount").value = ""; $("newInterval").value = "monthly";
+    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, every: clampEvery($("newEvery").value), due: $("newDue").value || null });
+    $("newName").value = ""; $("newAmount").value = ""; $("newEvery").value = "1"; $("newDue").value = "";
     $("newName").focus();
     scheduleSave();
   });
@@ -1240,7 +1273,7 @@ body.is-locked .wrap { visibility: hidden; }
     const f = e.target, it = state.items.find(i => i.id === f.dataset.form); if (!it) return;
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
-    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, interval: f.interval.value });
+    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null });
     editingCost = null; scheduleSave();
   });
 
