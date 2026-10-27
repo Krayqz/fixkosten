@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Fixkosten-Rechner</title>
 <meta name="description" content="Einkommen, Fixkosten und Ausgaben im Blick: was bis zum nächsten Lohn übrig bleibt.">
 <meta name="theme-color" content="#0a0d0c">
@@ -16,7 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
+button, a, input, select, label, summary { touch-action: manipulation; }
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
 [hidden] { display: none !important; }
@@ -1962,6 +1963,10 @@ body.is-locked .wrap { visibility: hidden; }
     b.closest(".help-acts").before(v); b.remove();
   });
   renderHelp();
+
+  // no zooming: iOS ignores user-scalable=no, so stop pinch gestures here (double-tap zoom is off via touch-action)
+  ["gesturestart", "gesturechange"].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener("touchmove", e => { if (e.scale !== undefined && e.scale !== 1) e.preventDefault(); }, { passive: false });
 
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
