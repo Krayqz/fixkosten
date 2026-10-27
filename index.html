@@ -357,6 +357,7 @@ th, td { border-bottom-color: var(--line); }
 .help-item p { margin: 0 0 10px; color: var(--muted); line-height: 1.45; }
 .help-acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .help-vid { font-size: .7rem; color: var(--accent); margin-left: 6px; }
+.voice-box { margin-top: 12px; } .voice-box .hint { margin-bottom: 14px; } #voicePick { flex: 1; min-width: 0; }
 .help-video { display: block; width: 100%; max-width: 320px; margin: 0 auto 12px; border-radius: 14px; border: 1px solid var(--line); background: #000; }
 .sign-seg { margin-bottom: 10px; }
 .seg button[aria-pressed="true"][data-sign="+"] { background: var(--good); color: var(--accent-ink); }
@@ -710,6 +711,10 @@ body.is-locked .wrap { visibility: hidden; }
       <p class="hint">Hier ist jede Funktion kurz erklärt, bei vielen mit kurzem Video (▶), das dir vorgelesen wird. Such einfach nach einem Wort, zum Beispiel „PayPal“, „Lohn“ oder „Face ID“.</p>
       <div class="field help-search"><label for="helpQ" class="sr-only">Suchen</label><input type="search" id="helpQ" placeholder="🔍 Suchen …" autocomplete="off" enterkeyhint="search"></div>
       <div class="help-list" id="helpList"></div>
+      <details class="help-item voice-box" id="voiceBox"><summary><span aria-hidden="true">🔊</span>Stimme für die Videos</summary>
+        <div class="row-btns bank-row"><select id="voicePick" aria-label="Stimme"></select><button class="btn small" type="button" id="voiceTest">Probe hören</button></div>
+        <p class="hint">Klingt die Stimme blechern? Lade eine schönere aufs iPhone: <b>Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch</b>, dort z. B. „Anna“ oder „Helena“ antippen und die Version <b>„Premium“</b> oder <b>„Erweitert“</b> laden. Danach hier auswählen (★ = beste Qualität).</p>
+      </details>
     </section>
 
     <section class="panel" aria-labelledby="bankH" data-tab="bank">
@@ -2049,8 +2054,8 @@ body.is-locked .wrap { visibility: hidden; }
     ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
     ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
-    ["⏸", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los."],
-    ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie."],
+    ["⏸", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
+    ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie.", "siri"],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
     ["↻", "Neu laden und Abmelden", "", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Daneben kannst du dich abmelden."],
   ];
@@ -2067,18 +2072,39 @@ body.is-locked .wrap { visibility: hidden; }
   // explainer clips are recorded with made-up demo data; loaded only when tapped.
   // The clips have no sound track: the captions are read aloud with the phone's own German voice.
   const speech = "speechSynthesis" in window ? speechSynthesis : null;
+  // iPhones ship robotic novelty voices too; prefer downloaded Premium/Erweitert voices, never the joke ones
+  const VOICE_KEY = "fixkosten-voice";
+  const NOVELTY = /\b(grandma|grandpa|rocko|eddy|flo|reed|sandy|shelley|albert|bahh|bells|boing|bubbles|cellos|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy)\b|news/i;
+  const voiceScore = v => (/premium/i.test(v.name + v.voiceURI) ? 40 : /enhanced|erweitert|verbessert/i.test(v.name + v.voiceURI) ? 30 : 0)
+    + (/de[-_]DE/i.test(v.lang) ? 5 : 0) + (/anna|helena|petra|markus|yannick|viktor|martin/i.test(v.name) ? 3 : 0) - (NOVELTY.test(v.name) ? 100 : 0);
+  const germanVoices = () => (speech ? speech.getVoices().filter(v => /^de/i.test(v.lang)) : []).sort((a, b) => voiceScore(b) - voiceScore(a));
   const germanVoice = () => {
-    const vs = speech ? speech.getVoices().filter(v => /^de/i.test(v.lang)) : [];
-    return vs.find(v => /premium|enhanced|erweitert/i.test(v.name)) || vs.find(v => /anna|helena|petra|markus/i.test(v.name)) || vs[0] || null;
+    const vs = germanVoices(); let pick = null;
+    try { pick = localStorage.getItem(VOICE_KEY); } catch {}
+    return vs.find(v => v.voiceURI === pick) || vs[0] || null;
   };
+  function fillVoices() {
+    const vs = germanVoices().filter(v => !NOVELTY.test(v.name)), cur = germanVoice();
+    $("voiceBox").hidden = !speech;
+    $("voicePick").innerHTML = vs.length
+      ? vs.map(v => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? " selected" : ""}>${esc(v.name)}${voiceScore(v) >= 30 ? " ★" : ""}</option>`).join("")
+      : `<option value="">Standard-Stimme</option>`;
+  }
+  const speakNow = text => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "de-DE"; u.rate = 1; u.pitch = 1;
+    const voice = germanVoice(); if (voice) u.voice = voice;
+    speech.speak(u);
+  };
+  if (speech) { speech.addEventListener?.("voiceschanged", fillVoices); }
+  fillVoices();
+  $("voicePick").addEventListener("change", e => { try { localStorage.setItem(VOICE_KEY, e.target.value); } catch {} });
+  $("voiceTest").addEventListener("click", () => { if (!speech) return; speech.cancel(); speakNow("Hallo! So klinge ich in den Erklär-Videos."); });
   function narrate(v, cues) {
     let next = 0;
     const say = text => {
-      if (!speech) return;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "de-DE"; u.rate = 1.05;
-      const voice = germanVoice(); if (voice) u.voice = voice;
-      speech.cancel(); speech.speak(u);
+      // queued, not cancelled, so a sentence is never cut off mid-word
+      if (speech) speakNow(text);
     };
     const sync = () => { next = cues.findIndex(c => c.t > v.currentTime - 0.3); if (next < 0) next = cues.length; };
     v.addEventListener("timeupdate", () => {
@@ -2095,7 +2121,7 @@ body.is-locked .wrap { visibility: hidden; }
     if (speech) { speech.cancel(); speech.speak(Object.assign(new SpeechSynthesisUtterance(" "), { volume: 0 })); }
     document.querySelectorAll(".help-video").forEach(x => x.pause());
     const v = document.createElement("video");
-    Object.assign(v, { src: `videos/${b.dataset.video}.mp4`, controls: true, playsInline: true, preload: "auto" });
+    Object.assign(v, { src: `videos/${b.dataset.video}.mp4`, poster: `videos/${b.dataset.video}.jpg`, controls: true, playsInline: true, preload: "auto" });
     v.className = "help-video";
     b.closest(".help-acts").before(v); b.remove();
     const cues = [];
