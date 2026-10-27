@@ -507,8 +507,10 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
     }
     const net = t.added - t.spent;
     $("spendSum").innerHTML = list.length ? `Summe: <span class="num ${net >= 0 ? "plus" : "minus"}">${net >= 0 ? "+" : "−"} ${fmt(Math.abs(net))}</span>` : "";
-    $("carryText").textContent = t.avail > 0 ? `Übrige ${fmt(t.avail)} als Einzahlung in den neuen Zeitraum mitnehmen` : "Übriges Geld mitnehmen (gerade ist nichts übrig)";
-    $("carryOver").disabled = !(t.avail > 0);
+    $("carryText").innerHTML = t.avail > 0 ? `Übrige ${fmt(t.avail)} als Einzahlung in den neuen Zeitraum mitnehmen`
+      : t.avail < 0 ? `<span class="minus">Minus von ${fmt(-t.avail)}</span> vom neuen Lohn abziehen`
+      : "Übriges Geld mitnehmen (gerade ist nichts übrig)";
+    $("carryOver").disabled = !t.avail;
     focusEditor("spendList");
   }
   function spendRow(e) {
@@ -571,9 +573,9 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
       $("history").innerHTML = `<p class="hint">Wenn du auf „Neuer Lohn ist da“ tippst, landet hier, wie viel du im abgelaufenen Zeitraum ausgegeben und mitgenommen hast.</p>`;
       return;
     }
-    $("history").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Ausgaben</th><th>Einzahlungen</th><th>Mitgenommen</th></tr></thead><tbody>
+    $("history").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Ausgaben</th><th>Einzahlungen</th><th>Übertrag</th></tr></thead><tbody>
       ${state.history.map(h => `<tr><td>${h.start ? fmtDate(h.start) + " – " : "bis "}${fmtDate(h.end, true)}</td>
-        <td class="num">${fmt(h.spent || 0)}</td><td class="num">${fmt(h.added || 0)}</td><td class="num">${fmt(h.carried || 0)}</td></tr>`).join("")}
+        <td class="num">${fmt(h.spent || 0)}</td><td class="num">${fmt(h.added || 0)}</td><td class="num${h.carried < 0 ? " minus" : ""}">${fmt(h.carried || 0)}</td></tr>`).join("")}
       </tbody></table></div>`;
   }
 
@@ -708,9 +710,11 @@ input[type="email"]:focus-visible, input[type="password"]:focus-visible { outlin
   $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
   $("resetYes").addEventListener("click", () => {
     const t = totals(), now = new Date().toISOString();
-    const carried = $("carryOver").checked && t.avail > 0 ? round2(t.avail) : 0;
+    const carried = $("carryOver").checked ? round2(t.avail) : 0;
     state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried }, ...state.history].slice(0, 24);
-    state.expenses = carried ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today() }] : [];
+    state.expenses = !carried ? []
+      : carried > 0 ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today() }]
+      : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today() }];
     state.periodStart = now;
     editingSpend = null;
     showReset(false);
