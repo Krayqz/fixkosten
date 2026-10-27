@@ -1,0 +1,16 @@
+{
+  "name": "Fixkosten-Rechner",
+  "short_name": "Fixkosten",
+  "description": "Was bleibt bis zum nächsten Lohn?",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef1f4",
+  "theme_color": "#1f5fd1",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fixkosten-Rechner</title>
+<meta name="description" content="Einkommen, Fixkosten und Ausgaben im Blick: was bis zum nächsten Lohn übrig bleibt.">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11161c" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fixkosten">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+html { -webkit-text-size-adjust: 100%; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+/* Layout: the available money first, then the day-to-day ledger beside income, the fixed-cost ledger, and history plus backup at the end. One column on phones. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #18212b;
+  --muted: #5d6976;
+  --line: #d7dde3;
+  --accent: #1f5fd1;
+  --accent-soft: #e3ecfb;
+  --good: #1a7f4e;
+  --bad: #c0362c;
+  --c1: #1f5fd1; --c2: #1a7f4e; --c3: #b8641a; --c4: #8a4fc4; --c5: #c0362c; --c6: #127a8a; --c7: #6b7480; --c8: #a68a12;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #98a4b0; --line: #2c3540;
+  --accent: #6b9dff; --accent-soft: #1e2c45; --good: #4fc58a; --bad: #ff7a6e;
+  --c1: #6b9dff; --c2: #4fc58a; --c3: #e8a25c; --c4: #b98af0; --c5: #ff7a6e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #d9c04a;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #98a4b0; --line: #2c3540;
+  --accent: #6b9dff; --accent-soft: #1e2c45; --good: #4fc58a; --bad: #ff7a6e;
+  --c1: #6b9dff; --c2: #4fc58a; --c3: #e8a25c; --c4: #b98af0; --c5: #ff7a6e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #d9c04a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 24px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: 1.05rem; font-weight: 500; color: var(--muted); }
+h2 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.hint { font-size: .85rem; color: var(--muted); }
+.plus { color: var(--good); }
+.minus { color: var(--bad); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.status[data-s="ok"]::before { background: var(--good); }
+.status[data-s="busy"]::before { background: var(--accent); }
+.status[data-s="err"]::before { background: var(--bad); }
+.notice { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; font-size: .9rem; }
+
+/* hero */
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; gap: 16px; }
+.hero-main { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; }
+.hero-figure { display: grid; gap: 4px; }
+.rest { font-family: var(--display); font-weight: 700; font-size: clamp(2.6rem, 11vw, 4.4rem); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rest.neg { color: var(--bad); }
+.perday { font-size: .95rem; }
+.perday b { font-family: var(--mono); font-weight: 500; }
+.equation { display: grid; grid-template-columns: auto auto; gap: 2px 18px; font-size: .9rem; margin: 0; }
+.equation dt { color: var(--muted); }
+.equation dd { margin: 0; text-align: right; }
+.equation .sum { border-top: 1px solid var(--line); padding-top: 4px; font-weight: 600; color: var(--ink); }
+.bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--accent-soft); }
+.bar span { display: block; height: 100%; flex: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+.legend b { color: var(--ink); font-weight: 500; }
+.spent-swatch { background: repeating-linear-gradient(135deg, var(--muted) 0 3px, transparent 3px 6px); }
+.free-swatch { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--line); }
+.saving-line { font-size: .9rem; border-top: 1px solid var(--line); padding-top: 12px; }
+.saving-line b { color: var(--good); font-family: var(--mono); font-weight: 500; }
+
+/* layout */
+.cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+@media (max-width: 820px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+/* form controls */
+input, select, button { font: inherit; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > label, .field > .flabel { font-size: .78rem; color: var(--muted); font-weight: 500; }
+input[type="text"], input[type="date"], input[type="number"], select {
+  display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 42px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
+  padding: 8px 10px; font-size: 16px;
+}
+input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.money { display: flex; align-items: center; min-width: 0; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.money input { border: 0; background: transparent; flex: 1; min-width: 0; padding: 8px 10px; font: 500 16px var(--mono); color: var(--ink); text-align: right; }
+.money span { padding-right: 10px; color: var(--muted); }
+.money.big input { font-size: 1.25rem; }
+input:focus { outline: none; }
+.money:focus-within, select:focus-visible, input[type="text"]:focus-visible, input[type="date"]:focus-visible, input[type="number"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn { border: 0; border-radius: 8px; background: var(--accent); color: var(--surface); padding: 10px 16px; min-height: 42px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.btn.danger { background: var(--bad); }
+.btn.good { background: var(--good); }
+.btn:focus-visible, .icon:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; min-width: 34px; min-height: 34px; border-radius: 6px; font-size: .95rem; }
+.icon:hover { color: var(--ink); background: var(--bg); }
+
+.formbox { display: grid; gap: 10px; background: var(--accent-soft); padding: 12px; border-radius: 12px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface); border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; color: var(--muted); border-radius: 7px; min-height: 38px; font-weight: 600; cursor: pointer; }
+.seg button[aria-pressed="true"][data-kind="out"] { background: var(--bad); color: var(--surface); }
+.seg button[aria-pressed="true"][data-kind="in"] { background: var(--good); color: var(--surface); }
+.fields { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.2fr) auto; align-items: end; }
+.fields.cost { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.1fr) auto; }
+.fields.edit4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 640px) {
+  .fields, .fields.cost, .fields.edit4 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .fields .wide, .fields .btn { grid-column: 1 / -1; }
+}
+
+/* lists */
+.list { display: grid; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.item.spend { grid-template-columns: 3.6em minmax(0, 1fr) auto auto; }
+.item .name { min-width: 0; overflow-wrap: anywhere; }
+.item .meta { font-size: .78rem; color: var(--muted); }
+.item .date { font-size: .8rem; color: var(--muted); }
+.actions { display: flex; }
+.pill { display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: .04em; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 1px; }
+.editbox { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.editbox .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.group { display: grid; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0 6px; border-bottom: 2px solid var(--line); }
+.group-head h3 { margin: 0; font-size: .95rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.group-head h3 i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.total-line { display: flex; justify-content: space-between; padding-top: 10px; font-weight: 600; }
+.empty { text-align: center; color: var(--muted); padding: 24px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.empty strong { display: block; color: var(--ink); font-family: var(--display); font-size: 1.05rem; margin-bottom: 4px; }
+
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.confirm { display: grid; gap: 10px; background: var(--accent-soft); border-radius: 12px; padding: 12px; font-size: .92rem; }
+.confirm .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.check { display: flex; align-items: flex-start; gap: 10px; }
+.check input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; }
+
+.income-total { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 12px; font-weight: 600; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+#app { display: contents; }
+.top-right { display: flex; align-items: center; gap: 12px; }
+.btn.small { min-height: 32px; padding: 4px 12px; font-size: .85rem; }
+input[type="email"], input[type="password"] {
+  display: block; width: 100%; min-width: 0; min-height: 42px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
+  padding: 8px 10px; font-size: 16px;
+}
+input[type="email"]:focus-visible, input[type="password"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg button[aria-pressed="true"][data-mode] { background: var(--accent); color: var(--surface); }
+.auth { display: grid; gap: 18px; max-width: 420px; width: 100%; margin: 6vh auto 0; }
+.auth-intro { display: grid; gap: 6px; }
+.auth-intro h2 { font-size: 1.6rem; }
+.linklike { border: 0; background: none; color: var(--accent); padding: 4px 0; cursor: pointer; justify-self: start; font-size: .9rem; }
+.linklike:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.auth-msg { font-size: .9rem; min-height: 1.2em; }
+.auth-msg.err { color: var(--bad); }
+.auth-msg.ok { color: var(--good); }
+@media (prefers-reduced-motion: no-preference) { .bar span { transition: width .3s ease; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Fixkosten-Rechner</h1>
+    <div class="top-right">
+      <div class="status" id="status" data-s="busy" role="status">Lädt …</div>
+      <button class="btn ghost small" type="button" id="logoutBtn" hidden>Abmelden</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="auth" id="auth" hidden aria-labelledby="authH">
+    <div class="auth-intro">
+      <h2 id="authH">Was bleibt dir bis zum nächsten Lohn?</h2>
+      <p class="hint">Melde dich an, um deine Fixkosten, Ausgaben und dein Einkommen zu sehen. Deine Daten sind nur für dich sichtbar.</p>
+    </div>
+    <form class="panel" id="authForm" autocomplete="on">
+      <div class="seg" role="group" aria-label="Anmelden oder Konto erstellen">
+        <button type="button" data-mode="login" aria-pressed="true">Anmelden</button>
+        <button type="button" data-mode="signup" aria-pressed="false">Konto erstellen</button>
+      </div>
+      <div class="field"><label for="authEmail">E-Mail</label><input type="email" id="authEmail" autocomplete="email" required></div>
+      <div class="field" id="pwField"><label for="authPw">Passwort</label><input type="password" id="authPw" autocomplete="current-password" minlength="8" required></div>
+      <button class="btn" type="submit" id="authBtn">Anmelden</button>
+      <button class="linklike" type="button" id="forgotBtn">Passwort vergessen?</button>
+      <p class="auth-msg" id="authMsg" role="status"></p>
+    </form>
+    <form class="panel" id="newPwForm" hidden>
+      <h2>Neues Passwort festlegen</h2>
+      <div class="field"><label for="newPw">Neues Passwort</label><input type="password" id="newPw" autocomplete="new-password" minlength="8" required></div>
+      <button class="btn" type="submit">Passwort speichern</button>
+      <p class="auth-msg" id="newPwMsg" role="status"></p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+
+  <section class="hero" aria-label="Übersicht">
+    <div class="hero-main">
+      <div class="hero-figure">
+        <div class="label">Noch verfügbar bis zum nächsten Lohn</div>
+        <div class="rest" id="avail">0,00 €</div>
+        <div class="perday" id="perDay"></div>
+      </div>
+      <dl class="equation num">
+        <dt>Einkommen</dt><dd id="eqIncome">0,00 €</dd>
+        <dt>Fixkosten</dt><dd id="eqCosts">− 0,00 €</dd>
+        <dt class="sum">Rest nach Fixkosten</dt><dd class="sum" id="eqRest">0,00 €</dd>
+        <dt>Einzahlungen</dt><dd id="eqAdded">+ 0,00 €</dd>
+        <dt>Ausgaben</dt><dd id="eqSpent">− 0,00 €</dd>
+        <dt class="sum">Noch verfügbar</dt><dd class="sum" id="eqAvail">0,00 €</dd>
+      </dl>
+    </div>
+    <div class="bar" id="bar" role="img" aria-label="Aufteilung des Geldes"></div>
+    <div class="legend" id="legend"></div>
+    <p class="saving-line" id="savingLine" hidden></p>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="spendH">
+      <div class="panel-head">
+        <h2 id="spendH">Ausgaben und Einzahlungen</h2>
+        <span class="label" id="spendSince"></span>
+      </div>
+      <form class="formbox" id="spendForm" autocomplete="off">
+        <div class="seg" role="group" aria-label="Art des Eintrags">
+          <button type="button" data-kind="out" aria-pressed="true">− Ausgabe</button>
+          <button type="button" data-kind="in" aria-pressed="false">+ Einzahlung</button>
+        </div>
+        <div class="fields">
+          <div class="field"><label for="spendAmount">Betrag</label><div class="money big"><input id="spendAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
+          <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
+          <div class="field wide"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
+          <button class="btn" type="submit" id="spendBtn">Abziehen</button>
+        </div>
+      </form>
+      <div class="list" id="spendList"></div>
+      <div class="foot" id="spendFoot">
+        <span class="hint" id="spendSum"></span>
+        <button class="btn ghost" type="button" id="resetBtn">Neuer Lohn ist da</button>
+      </div>
+      <div class="confirm" id="resetConfirm" hidden>
+        <strong>Neuen Zeitraum starten?</strong>
+        <span>Die Einträge oben werden gelöscht. Im Verlauf bleibt gespeichert, wie viel du ausgegeben hast.</span>
+        <label class="check"><input type="checkbox" id="carryOver" checked><span id="carryText">Übriges Geld mitnehmen</span></label>
+        <div class="row-btns">
+          <button class="btn" type="button" id="resetYes">Neuen Zeitraum starten</button>
+          <button class="btn ghost" type="button" id="resetNo">Abbrechen</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="incH">
+      <h2 id="incH">Einkommen</h2>
+      <div class="field">
+        <label for="mainIncome">Hauptjob, netto im Monat</label>
+        <div class="money"><input id="mainIncome" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div>
+      </div>
+      <div class="field">
+        <label for="minijob">Minijob im Monat</label>
+        <div class="money"><input id="minijob" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div>
+      </div>
+      <div class="income-total"><span>Gesamt</span><span class="num" id="incomeTotal">0,00 €</span></div>
+      <div class="field">
+        <label for="payday">Lohn kommt am (Tag im Monat)</label>
+        <input type="number" id="payday" min="1" max="31" inputmode="numeric" placeholder="z. B. 28">
+        <span class="hint">Optional. Dann siehst du oben, wie viel du pro Tag noch ausgeben kannst.</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="costH">
+    <div class="panel-head">
+      <h2 id="costH">Fixkosten</h2>
+      <span class="label" id="costCount">0 Posten</span>
+    </div>
+    <form class="formbox" id="costForm" autocomplete="off">
+      <div class="fields cost">
+        <div class="field wide"><label for="newName">Was</label><input type="text" id="newName" placeholder="z. B. Handyvertrag" required></div>
+        <div class="field"><label for="newCat">Kategorie</label><input type="text" id="newCat" list="catList" placeholder="Verträge" required></div>
+        <div class="field"><label for="newAmount">Betrag</label><div class="money"><input id="newAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
+        <div class="field wide"><label for="newInterval">Wie oft</label>
+          <select id="newInterval"><option value="monthly">monatlich</option><option value="quarterly">vierteljährlich</option><option value="yearly">jährlich</option></select></div>
+        <button class="btn" type="submit">Hinzufügen</button>
+      </div>
+    </form>
+    <datalist id="catList"></datalist>
+    <div id="ledger"></div>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="histH">
+      <h2 id="histH">Verlauf</h2>
+      <div id="history"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="backupH">
+      <h2 id="backupH">Daten sichern</h2>
+      <p class="hint">Lade ab und zu eine Sicherung herunter. Damit kannst du deine Daten wiederherstellen oder in eine andere Version der Seite mitnehmen.</p>
+      <div class="btn-row">
+        <button class="btn ghost" type="button" id="exportBtn">Sicherung herunterladen</button>
+        <label class="btn ghost" for="importFile">Sicherung laden</label>
+        <input class="sr-only" type="file" id="importFile" accept=".json,application/json">
+      </div>
+      <div class="confirm" id="importConfirm" hidden>
+        <span id="importText"></span>
+        <div class="row-btns">
+          <button class="btn danger" type="button" id="importYes">Daten ersetzen</button>
+          <button class="btn ghost" type="button" id="importNo">Abbrechen</button>
+        </div>
+      </div>
+      <p class="hint" id="backupMsg" role="status"></p>
+    </section>
+  </div>
+  </div>
+</div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(() => {
+  const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Sonstiges: "--c7" };
+  const DEFAULT_CATS = Object.keys(CAT_COLORS);
+  const EXTRA_COLORS = ["--c5", "--c1", "--c4", "--c6", "--c3", "--c8"];
+  const SAVING_CAT = "Sparen";
+  const INTERVALS = { monthly: { div: 1, label: "monatlich", short: "" }, quarterly: { div: 3, label: "vierteljährlich", short: "vierteljährl." }, yearly: { div: 12, label: "jährlich", short: "jährlich" } };
+  const CACHE_KEY = "fixkosten-cache-";
+
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], periodStart: null, history: [] });
+  let state = blank();
+  let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
+  let editingCost = null, editingSpend = null, spendKind = "out", pendingImport = null;
+
+  // --- helpers ---
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+  const round2 = n => Math.round(n * 100) / 100;
+  const parseEuro = s => {
+    s = String(s ?? "").replace(/[€\s]/g, "");
+    if (!s) return 0;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    const n = Number(s);
+    return Number.isFinite(n) ? round2(n) : NaN;
+  };
+  const toField = n => n ? n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+  const monthly = it => it.amount / (INTERVALS[it.interval]?.div || 1);
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
+  const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const today = () => isoDay(new Date());
+  const fmtDate = (iso, withYear) => {
+    if (!iso) return "";
+    const d = new Date(iso.length === 10 ? iso + "T12:00:00" : iso);
+    return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: withYear ? "numeric" : undefined });
+  };
+  const setStatus = (s, text) => { const el = $("status"); el.dataset.s = s; el.textContent = text; el.hidden = !text; };
+
+  function categories() {
+    return [...new Set([...DEFAULT_CATS, ...state.items.map(i => i.category)])];
+  }
+  function colorFor(cat) {
+    if (CAT_COLORS[cat]) return `var(${CAT_COLORS[cat]})`;
+    const custom = categories().filter(c => !CAT_COLORS[c]);
+    return `var(${EXTRA_COLORS[custom.indexOf(cat) % EXTRA_COLORS.length]})`;
+  }
+
+  function totals() {
+    const income = (state.mainIncome || 0) + (state.minijob || 0);
+    const costs = sum(state.items, monthly);
+    const savings = sum(state.items.filter(i => i.category === SAVING_CAT), monthly);
+    const spent = sum(state.expenses.filter(e => e.kind !== "in"), e => e.amount);
+    const added = sum(state.expenses.filter(e => e.kind === "in"), e => e.amount);
+    const rest = income - costs;
+    return { income, costs, savings, spent, added, rest, avail: rest + added - spent };
+  }
+
+  function nextPayday(day) {
+    const now = new Date(); now.setHours(12, 0, 0, 0);
+    const at = (y, m) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()), 12);
+    let next = at(now.getFullYear(), now.getMonth());
+    if (next <= now) next = at(now.getFullYear(), now.getMonth() + 1);
+    return { date: next, days: Math.round((next - now) / 86400000) };
+  }
+
+  // --- render ---
+  function render() {
+    const t = totals();
+    if (sb) {
+      const showWelcome = welcome && !state.items.length && !state.mainIncome;
+      $("notice").hidden = !showWelcome;
+      if (showWelcome) $("notice").textContent = "Willkommen! Hast du eine Sicherung von deiner alten Seite? Dann lade sie ganz unten bei „Daten sichern“. Sonst fang einfach mit deinem Einkommen an.";
+    }
+    renderHero(t);
+    renderIncome(t);
+    renderSpending(t);
+    renderLedger(t);
+    renderHistory();
+  }
+
+  function renderHero(t) {
+    $("avail").textContent = fmt(t.avail);
+    $("avail").classList.toggle("neg", t.avail < 0);
+    $("eqIncome").textContent = fmt(t.income);
+    $("eqCosts").textContent = "− " + fmt(t.costs);
+    $("eqRest").textContent = fmt(t.rest);
+    $("eqAdded").textContent = "+ " + fmt(t.added);
+    $("eqSpent").textContent = "− " + fmt(t.spent);
+    $("eqAvail").textContent = fmt(t.avail);
+
+    if (!t.income) {
+      $("perDay").textContent = "Trag unten dein Einkommen ein, dann rechnet die Seite los.";
+    } else if (state.payday) {
+      const p = nextPayday(state.payday);
+      const per = t.avail > 0 ? t.avail / p.days : 0;
+      $("perDay").innerHTML = `Noch ${p.days} ${p.days === 1 ? "Tag" : "Tage"} bis zum Lohn am ${fmtDate(isoDay(p.date))}, also etwa <b>${fmt(per)}</b> pro Tag.`;
+    } else {
+      $("perDay").textContent = "";
+    }
+
+    const cats = categories().map(cat => ({ cat, sum: sum(state.items.filter(i => i.category === cat), monthly) })).filter(s => s.sum > 0);
+    const base = Math.max(t.income + t.added, t.costs + t.spent) || 1;
+    const spentShown = Math.min(t.spent, Math.max(t.rest + t.added, 0));
+    const w = n => `${(n / base) * 100}%`;
+    $("bar").innerHTML = cats.map(s => `<span style="width:${w(s.sum)};background:${colorFor(s.cat)}" title="${esc(s.cat)}: ${fmt(s.sum)}"></span>`).join("")
+      + (spentShown > 0 ? `<span class="spent-swatch" style="width:${w(spentShown)}" title="Ausgaben: ${fmt(t.spent)}"></span>` : "");
+    $("legend").innerHTML = cats.map(s => `<span><i style="background:${colorFor(s.cat)}"></i>${esc(s.cat)} <b class="num">${fmt(s.sum)}</b></span>`).join("")
+      + (t.spent ? `<span><i class="spent-swatch"></i>Ausgaben <b class="num">${fmt(t.spent)}</b></span>` : "")
+      + (t.income ? `<span><i class="free-swatch"></i>Noch verfügbar <b class="num">${fmt(Math.max(t.avail, 0))}</b></span>` : "");
+
+    $("savingLine").hidden = !t.savings;
+    if (t.savings) {
+      const share = t.income ? ` Das sind ${Math.round((t.savings / t.income) * 100)} % von deinem Einkommen.` : "";
+      $("savingLine").innerHTML = `Davon legst du jeden Monat <b>${fmt(t.savings)}</b> zur Seite.${share}`;
+    }
+  }
+
+  function renderIncome(t) {
+    $("incomeTotal").textContent = fmt(t.income);
+    if (document.activeElement !== $("mainIncome")) $("mainIncome").value = toField(state.mainIncome);
+    if (document.activeElement !== $("minijob")) $("minijob").value = toField(state.minijob);
+    if (document.activeElement !== $("payday")) $("payday").value = state.payday || "";
+  }
+
+  function renderSpending(t) {
+    $("spendSince").textContent = state.periodStart ? "seit " + fmtDate(state.periodStart, true) : "";
+    const list = [...state.expenses].sort((a, b) => b.date.localeCompare(a.date));
+    if (!list.length) {
+      $("spendList").innerHTML = `<div class="empty"><strong>Noch nichts eingetragen</strong>Trag hier ein, was du zwischendurch ausgibst, zum Beispiel Tanken oder Einkaufen. Geld, das zusätzlich reinkommt, trägst du als Einzahlung ein.</div>`;
+    } else {
+      $("spendList").innerHTML = list.map(e => e.id === editingSpend ? spendEditor(e) : spendRow(e)).join("");
+    }
+    const net = t.added - t.spent;
+    $("spendSum").innerHTML = list.length ? `Summe: <span class="num ${net >= 0 ? "plus" : "minus"}">${net >= 0 ? "+" : "−"} ${fmt(Math.abs(net))}</span>` : "";
+    $("carryText").textContent = t.avail > 0 ? `Übrige ${fmt(t.avail)} als Einzahlung in den neuen Zeitraum mitnehmen` : "Übriges Geld mitnehmen (gerade ist nichts übrig)";
+    $("carryOver").disabled = !(t.avail > 0);
+    focusEditor("spendList");
+  }
+  function spendRow(e) {
+    const inn = e.kind === "in";
+    return `<div class="item spend"><span class="date num">${fmtDate(e.date)}</span><span class="name">${esc(e.name)}</span>
+      <span class="num ${inn ? "plus" : ""}">${inn ? "+" : "−"} ${fmt(e.amount)}</span>
+      <span class="actions"><button class="icon" type="button" data-spend-edit="${e.id}" aria-label="${esc(e.name)} ändern">✎</button><button class="icon" type="button" data-spend-del="${e.id}" aria-label="${esc(e.name)} löschen">✕</button></span></div>`;
+  }
+  function spendEditor(e) {
+    return `<form class="editbox" data-spend-form="${e.id}">
+      <div class="fields edit4">
+        <div class="field"><label for="se-amt">Betrag</label><div class="money"><input id="se-amt" name="amount" inputmode="decimal" value="${toField(e.amount)}" required><span>€</span></div></div>
+        <div class="field"><label for="se-name">${e.kind === "in" ? "Woher" : "Wofür"}</label><input type="text" id="se-name" name="name" value="${esc(e.name)}" required></div>
+        <div class="field"><label for="se-kind">Art</label><select id="se-kind" name="kind"><option value="out"${e.kind !== "in" ? " selected" : ""}>Ausgabe</option><option value="in"${e.kind === "in" ? " selected" : ""}>Einzahlung</option></select></div>
+        <div class="field"><label for="se-date">Datum</label><input type="date" id="se-date" name="date" value="${e.date}" required></div>
+      </div>
+      <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
+  }
+
+  function renderLedger() {
+    $("costCount").textContent = state.items.length === 1 ? "1 Posten" : state.items.length + " Posten";
+    $("catList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
+    const groups = categories().map(cat => [cat, state.items.filter(i => i.category === cat)]).filter(([, l]) => l.length);
+    if (!groups.length) {
+      $("ledger").innerHTML = `<div class="empty"><strong>Noch keine Fixkosten</strong>Trag oben deinen ersten Posten ein, zum Beispiel Miete, Handyvertrag oder Sparrate. Jährliche Beträge rechnet die Seite automatisch auf den Monat um.</div>`;
+      return;
+    }
+    $("ledger").innerHTML = groups.map(([cat, list]) => `<div class="group">
+        <div class="group-head"><h3><i style="background:${colorFor(cat)}"></i>${esc(cat)}</h3><span class="num">${fmt(sum(list, monthly))}</span></div>
+        ${list.map(it => it.id === editingCost ? costEditor(it) : costRow(it)).join("")}</div>`).join("")
+      + `<div class="total-line"><span>Fixkosten pro Monat</span><span class="num">${fmt(sum(state.items, monthly))}</span></div>`;
+    focusEditor("ledger");
+  }
+  function costRow(it) {
+    const iv = INTERVALS[it.interval];
+    const pill = iv.short ? `<span class="pill">${iv.short}</span>` : "";
+    const per = it.interval !== "monthly" ? `<div class="meta num">${fmt(it.amount)} ${iv.label}, also pro Monat</div>` : "";
+    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}</div>
+      <span class="num">${fmt(monthly(it))}</span>
+      <span class="actions"><button class="icon" type="button" data-edit="${it.id}" aria-label="${esc(it.name)} ändern">✎</button><button class="icon" type="button" data-del="${it.id}" aria-label="${esc(it.name)} löschen">✕</button></span></div>`;
+  }
+  function costEditor(it) {
+    const opts = Object.entries(INTERVALS).map(([k, v]) => `<option value="${k}"${k === it.interval ? " selected" : ""}>${v.label}</option>`).join("");
+    return `<form class="editbox" data-form="${it.id}">
+      <div class="fields edit4">
+        <div class="field wide"><label for="ce-name">Was</label><input type="text" id="ce-name" name="name" value="${esc(it.name)}" required></div>
+        <div class="field"><label for="ce-cat">Kategorie</label><input type="text" id="ce-cat" name="category" list="catList" value="${esc(it.category)}" required></div>
+        <div class="field"><label for="ce-amt">Betrag</label><div class="money"><input id="ce-amt" name="amount" inputmode="decimal" value="${toField(it.amount)}" required><span>€</span></div></div>
+        <div class="field wide"><label for="ce-int">Wie oft</label><select id="ce-int" name="interval">${opts}</select></div>
+      </div>
+      <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
+  }
+  function focusEditor(containerId) {
+    const box = $(containerId), first = box.querySelector(".editbox input");
+    if (first && !box.contains(document.activeElement)) first.focus();
+  }
+
+  function renderHistory() {
+    if (!state.history.length) {
+      $("history").innerHTML = `<p class="hint">Wenn du auf „Neuer Lohn ist da“ tippst, landet hier, wie viel du im abgelaufenen Zeitraum ausgegeben und mitgenommen hast.</p>`;
+      return;
+    }
+    $("history").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Ausgaben</th><th>Einzahlungen</th><th>Mitgenommen</th></tr></thead><tbody>
+      ${state.history.map(h => `<tr><td>${h.start ? fmtDate(h.start) + " – " : "bis "}${fmtDate(h.end, true)}</td>
+        <td class="num">${fmt(h.spent || 0)}</td><td class="num">${fmt(h.added || 0)}</td><td class="num">${fmt(h.carried || 0)}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  // --- data ---
+  function normalize(d) {
+    const s = blank();
+    if (!d || typeof d !== "object") return s;
+    s.mainIncome = Number(d.mainIncome) || 0;
+    s.minijob = Number(d.minijob) || 0;
+    const pd = Math.round(Number(d.payday));
+    s.payday = pd >= 1 && pd <= 31 ? pd : null;
+    s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
+      id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
+      amount: Number(i.amount) || 0, interval: INTERVALS[i.interval] ? i.interval : "monthly"
+    })) : [];
+    s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
+      id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today()
+    })) : [];
+    s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
+    s.history = Array.isArray(d.history) ? d.history.filter(h => h && h.end).slice(0, 24).map(h => ({
+      start: typeof h.start === "string" ? h.start : null, end: String(h.end),
+      spent: Number(h.spent) || 0, added: Number(h.added) || 0, carried: Number(h.carried) || 0
+    })) : [];
+    return s;
+  }
+  const serialize = () => ({ ...state, updatedAt: new Date().toISOString() });
+
+  function cacheState() {
+    if (!user) return;
+    try { localStorage.setItem(CACHE_KEY + user.id, JSON.stringify(serialize())); } catch {}
+  }
+  function scheduleSave() {
+    welcome = false;
+    unsaved = true;
+    render();
+    cacheState();
+    clearTimeout(saveTimer);
+    setStatus("busy", "Speichert …");
+    saveTimer = setTimeout(save, 600);
+  }
+  async function save() {
+    saveTimer = null;
+    clearTimeout(retryTimer);
+    if (!user) return;
+    if (!loaded) { setStatus("err", "Offline. Deine Änderung wird gespeichert, sobald du wieder Internet hast."); return; }
+    const data = serialize();
+    saving = true;
+    const { error } = await sb.from("budgets").upsert({ user_id: user.id, data, updated_at: data.updatedAt });
+    saving = false;
+    if (saveTimer) return; // a newer change is already queued
+    if (error) {
+      setStatus("err", "Nicht gespeichert. Prüf deine Internetverbindung, ich versuche es gleich nochmal.");
+      retryTimer = setTimeout(save, 15000);
+      return;
+    }
+    unsaved = false;
+    setStatus("ok", "Gespeichert");
+  }
+  async function loadRemote() {
+    if (!user || saving) return;
+    const id = user.id;
+    const { data, error } = await sb.from("budgets").select("data").eq("user_id", id).maybeSingle();
+    if (!user || user.id !== id) return;
+    if (error) {
+      if (!loaded) setStatus("err", "Offline. Du siehst den zuletzt gespeicherten Stand.");
+      return;
+    }
+    const first = !loaded;
+    loaded = true;
+    if (unsaved || saveTimer || saving) { if (unsaved && !saveTimer && !saving) save(); return; }
+    if (data && data.data) { state = normalize(data.data); cacheState(); }
+    else if (first) welcome = true;
+    render();
+    setStatus("ok", data ? "Gespeichert" : "Noch nichts gespeichert");
+  }
+
+  // --- events: income ---
+  for (const key of ["mainIncome", "minijob"]) {
+    $(key).addEventListener("input", e => {
+      const n = parseEuro(e.target.value);
+      if (Number.isNaN(n)) return;
+      state[key] = n; scheduleSave();
+    });
+    $(key).addEventListener("blur", render);
+  }
+  $("payday").addEventListener("input", e => {
+    const n = Math.round(Number(e.target.value));
+    state.payday = e.target.value && n >= 1 && n <= 31 ? n : null;
+    scheduleSave();
+  });
+  $("payday").addEventListener("blur", render);
+
+  // --- events: spending ---
+  function setKind(kind) {
+    spendKind = kind;
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
+    const isIn = kind === "in";
+    $("spendNameLabel").textContent = isIn ? "Woher" : "Wofür";
+    $("spendName").placeholder = isIn ? "z. B. Aushelfen bei Manuel" : "z. B. Tanken";
+    $("spendBtn").textContent = isIn ? "Hinzufügen" : "Abziehen";
+    $("spendBtn").classList.toggle("good", isIn);
+  }
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
+  $("spendDate").value = today();
+  $("spendForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = parseEuro($("spendAmount").value);
+    if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
+    state.expenses.push({ id: uid(), kind: spendKind, name: $("spendName").value.trim(), amount, date: $("spendDate").value || today() });
+    $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
+    $("spendAmount").focus();
+    scheduleSave();
+  });
+  $("spendList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.spendDel) { state.expenses = state.expenses.filter(x => x.id !== b.dataset.spendDel); scheduleSave(); }
+    else if (b.dataset.spendEdit) { editingSpend = b.dataset.spendEdit; render(); }
+    else if (b.hasAttribute("data-cancel")) { editingSpend = null; render(); }
+  });
+  $("spendList").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target, x = state.expenses.find(i => i.id === f.dataset.spendForm); if (!x) return;
+    const amount = parseEuro(f.amount.value);
+    if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
+    Object.assign(x, { amount, name: f.elements.name.value.trim(), kind: f.kind.value === "in" ? "in" : "out", date: f.date.value || x.date });
+    editingSpend = null; scheduleSave();
+  });
+
+  const showReset = on => { $("resetConfirm").hidden = !on; $("spendFoot").hidden = on; };
+  $("resetBtn").addEventListener("click", () => { showReset(true); $("resetNo").focus(); });
+  $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
+  $("resetYes").addEventListener("click", () => {
+    const t = totals(), now = new Date().toISOString();
+    const carried = $("carryOver").checked && t.avail > 0 ? round2(t.avail) : 0;
+    state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried }, ...state.history].slice(0, 24);
+    state.expenses = carried ? [{ id: uid(), kind: "in", name: "Übrig vom letzten Lohn", amount: carried, date: today() }] : [];
+    state.periodStart = now;
+    editingSpend = null;
+    showReset(false);
+    scheduleSave();
+  });
+
+  // --- events: fixed costs ---
+  $("costForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = parseEuro($("newAmount").value);
+    if (Number.isNaN(amount) || amount <= 0) { $("newAmount").focus(); return; }
+    state.items.push({ id: uid(), name: $("newName").value.trim(), category: $("newCat").value.trim(), amount, interval: $("newInterval").value });
+    $("newName").value = ""; $("newAmount").value = ""; $("newInterval").value = "monthly";
+    $("newName").focus();
+    scheduleSave();
+  });
+  $("ledger").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.del) { state.items = state.items.filter(i => i.id !== b.dataset.del); scheduleSave(); }
+    else if (b.dataset.edit) { editingCost = b.dataset.edit; render(); }
+    else if (b.hasAttribute("data-cancel")) { editingCost = null; render(); }
+  });
+  $("ledger").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target, it = state.items.find(i => i.id === f.dataset.form); if (!it) return;
+    const amount = parseEuro(f.amount.value);
+    if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
+    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, interval: f.interval.value });
+    editingCost = null; scheduleSave();
+  });
+
+  // --- backup ---
+  const backupMsg = text => { $("backupMsg").textContent = text; };
+  $("exportBtn").addEventListener("click", async () => {
+    const json = JSON.stringify({ app: "fixkosten-rechner", version: 1, ...serialize() }, null, 2);
+    const filename = `fixkosten-sicherung-${today()}.json`;
+    const file = new File([json], filename, { type: "application/json" });
+    if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); backupMsg("Sicherung erstellt."); return; }
+      catch (err) { if (err?.name === "AbortError") { backupMsg("Abgebrochen."); return; } }
+    }
+    const url = URL.createObjectURL(file);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    backupMsg("Sicherung heruntergeladen.");
+  });
+  $("importFile").addEventListener("change", async e => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    try {
+      const d = JSON.parse(await file.text());
+      if (!d || !Array.isArray(d.items)) throw new Error("format");
+      pendingImport = normalize(d);
+      const when = d.updatedAt ? ` vom ${fmtDate(d.updatedAt, true)}` : "";
+      $("importText").textContent = `Die Sicherung${when} enthält ${pendingImport.items.length} Fixkosten und ${pendingImport.expenses.length} Einträge. Sie ersetzt alle Daten, die gerade auf der Seite stehen.`;
+      $("importConfirm").hidden = false; backupMsg("");
+      $("importNo").focus();
+    } catch { backupMsg("Diese Datei ist keine Sicherung vom Fixkosten-Rechner."); }
+  });
+  $("importNo").addEventListener("click", () => { pendingImport = null; $("importConfirm").hidden = true; });
+  $("importYes").addEventListener("click", () => {
+    if (!pendingImport) return;
+    state = pendingImport; pendingImport = null;
+    $("importConfirm").hidden = true; backupMsg("Sicherung geladen.");
+    editingCost = editingSpend = null;
+    scheduleSave();
+  });
+
+  // --- login ---
+  let authMode = "login";
+  const authMsg = (text, kind = "") => { const el = $("authMsg"); el.textContent = text; el.className = "auth-msg " + kind; };
+  function authError(err) {
+    const m = String(err?.message || err || "");
+    if (/invalid login credentials/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
+    if (/email not confirmed/i.test(m)) return "Bitte bestätige zuerst deine E-Mail-Adresse über den Link in deinem Postfach.";
+    if (/already registered|already been registered/i.test(m)) return "Für diese E-Mail gibt es schon ein Konto. Melde dich an.";
+    if (/signups? not allowed|signup.*disabled/i.test(m)) return "Neue Konten sind für diese Seite ausgeschaltet.";
+    if (/password.*(at least|characters)|weak/i.test(m)) return "Das Passwort muss mindestens 8 Zeichen haben.";
+    if (/rate limit|too many/i.test(m)) return "Zu viele Versuche. Warte ein paar Minuten und versuch es dann nochmal.";
+    if (/fetch|network/i.test(m)) return "Keine Verbindung. Prüf dein Internet.";
+    return "Das hat nicht geklappt: " + m;
+  }
+  function setMode(mode) {
+    authMode = mode;
+    document.querySelectorAll("#authForm .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    $("authBtn").textContent = mode === "login" ? "Anmelden" : "Konto erstellen";
+    $("authPw").autocomplete = mode === "login" ? "current-password" : "new-password";
+    $("forgotBtn").hidden = mode !== "login";
+    authMsg("");
+  }
+  document.querySelectorAll("#authForm .seg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  const here = () => location.origin + location.pathname;
+  $("authForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const email = $("authEmail").value.trim(), password = $("authPw").value;
+    $("authBtn").disabled = true; authMsg("Einen Moment …");
+    try {
+      if (authMode === "login") {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        authMsg("");
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: here() } });
+        if (error) throw error;
+        if (!data.session) authMsg("Fast geschafft: Wir haben dir eine E-Mail geschickt. Tipp auf den Link darin, dann bist du angemeldet.", "ok");
+      }
+    } catch (err) { authMsg(authError(err), "err"); }
+    finally { $("authBtn").disabled = false; }
+  });
+  $("forgotBtn").addEventListener("click", async () => {
+    const email = $("authEmail").value.trim();
+    if (!email) { authMsg("Gib zuerst oben deine E-Mail-Adresse ein.", "err"); $("authEmail").focus(); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: here() });
+    authMsg(error ? authError(error) : "Wir haben dir einen Link geschickt, mit dem du ein neues Passwort festlegst.", error ? "err" : "ok");
+  });
+  function showNewPassword(on) {
+    $("newPwForm").hidden = !on;
+    $("authForm").hidden = on;
+    $("auth").hidden = on ? false : !!user;
+    $("app").hidden = on || !user;
+    if (on) $("newPw").focus();
+  }
+  $("newPwForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.updateUser({ password: $("newPw").value });
+    if (error) { $("newPwMsg").textContent = authError(error); $("newPwMsg").className = "auth-msg err"; return; }
+    $("newPw").value = "";
+    showNewPassword(false);
+  });
+  $("logoutBtn").addEventListener("click", async () => {
+    if (unsaved) await save();
+    await sb.auth.signOut();
+  });
+
+  function setUser(u) {
+    if (user !== undefined && (u?.id || null) === (user?.id || null)) return;
+    user = u || null;
+    loaded = false; unsaved = false; welcome = false;
+    clearTimeout(saveTimer); clearTimeout(retryTimer); saveTimer = null;
+    editingCost = editingSpend = null;
+    $("auth").hidden = !!user; $("app").hidden = !user; $("logoutBtn").hidden = !user;
+    if (!user) { state = blank(); render(); setStatus("idle", ""); $("authEmail").focus(); return; }
+    try { const c = localStorage.getItem(CACHE_KEY + user.id); state = c ? normalize(JSON.parse(c)) : blank(); } catch { state = blank(); }
+    render();
+    setStatus("busy", "Lädt …");
+    loadRemote();
+  }
+
+  // --- boot ---
+  render();
+  (async () => {
+    const cfg = window.FIXKOSTEN_CONFIG || {};
+    if (!window.supabase || !cfg.supabaseUrl || !cfg.supabaseKey) {
+      $("notice").hidden = false;
+      $("notice").textContent = !window.supabase
+        ? "Die Seite konnte nicht vollständig laden. Prüf deine Internetverbindung und lade sie neu."
+        : "Die Seite ist noch nicht fertig eingerichtet: In config.js fehlen die Supabase-Daten.";
+      setStatus("err", "Nicht eingerichtet");
+      return;
+    }
+    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    sb.auth.onAuthStateChange((event, session) => {
+      setTimeout(() => {
+        setUser(session?.user || null);
+        if (event === "PASSWORD_RECOVERY") showNewPassword(true);
+      }, 0);
+    });
+    const { data } = await sb.auth.getSession();
+    setUser(data.session?.user || null);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadRemote(); });
+    window.addEventListener("online", () => { if (unsaved) save(); else loadRemote(); });
+  })();
+})();
+</script>
+
+</body>
+</html>
