@@ -421,6 +421,14 @@ th, td { border-bottom-color: var(--line); }
 .nm-card summary .hint { font-size: .78rem; }
 .nm-open { color: var(--muted); font-size: 1.4rem; transition: transform .2s; }
 .nm-card[open] .nm-open { transform: rotate(90deg); }
+.item.is-paused > .num { opacity: .45; text-decoration: line-through; }
+.paused-tag { color: var(--accent); }
+.paused-tag .linklike { font-size: inherit; margin-left: 6px; }
+.pause-chip { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .82rem; cursor: pointer; }
+.pause-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.siri-steps ol { margin: 8px 0 12px; padding-left: 20px; display: grid; gap: 8px; line-height: 1.45; }
+.siri-url { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.siri-url code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .82rem; }
 .nm-due { display: grid; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .nm-due .label { font-size: .72rem; color: var(--muted); }
 .nm-due-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: .86rem; font-weight: 500; }
@@ -662,6 +670,7 @@ body.is-locked .wrap { visibility: hidden; }
       <h2>Mehr</h2>
       <div class="menu">
         <button type="button" data-go="help"><span class="m-ico" aria-hidden="true">❓</span><span>Hilfe &amp; Suche<small>Jede Funktion erklärt, mit Suche</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="siri"><span class="m-ico" aria-hidden="true">🎙️</span><span>Siri &amp; Kurzbefehl<small>„Hey Siri, Ausgabe eintragen“ einrichten</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="bank"><span class="m-ico" aria-hidden="true">🏦</span><span>Kontostand-Abgleich<small id="menuBank">Prüfen, ob dein Konto zur App passt</small></span><b aria-hidden="true">›</b></button>
@@ -669,6 +678,30 @@ body.is-locked .wrap { visibility: hidden; }
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="siriH" data-tab="siri">
+      <h2 id="siriH">Siri &amp; Kurzbefehl</h2>
+      <p class="hint">Damit kannst du sagen <b>„Hey Siri, Ausgabe eintragen“</b>. Siri fragt dann „Was hast du ausgegeben?“ und du antwortest z. B. <b>„12,50 Döner“</b>. Die Ausgabe wird eingetragen, die Kategorie errät die App.</p>
+      <div class="box siri-steps">
+        <strong>Einmal einrichten (ca. 2 Minuten)</strong>
+        <ol>
+          <li>Öffne die App <b>Kurzbefehle</b> und tippe oben rechts auf <b>+</b>.</li>
+          <li>Tippe auf <b>Aktion hinzufügen</b>, such <b>„Nach Eingabe fragen“</b> und tipp drauf. Tipp auf das blaue Wort „Eingabe“ und schreib: <i>Was hast du ausgegeben?</i></li>
+          <li>Füg die Aktion <b>„URL codieren“</b> hinzu. Sie nimmt automatisch die „Gefragte Eingabe“.</li>
+          <li>Füg die Aktion <b>„URL“</b> hinzu. Kopier den Link unten und füg ihn dort ein. Tipp dann direkt ans Ende vom Link und wähl über der Tastatur die Variable <b>„URL-codierter Text“</b>.</li>
+          <li>Füg die Aktion <b>„URLs öffnen“</b> hinzu.</li>
+          <li>Tipp oben auf den Namen und nenn den Kurzbefehl <b>„Ausgabe eintragen“</b>. Fertig!</li>
+        </ol>
+        <div class="siri-url"><code id="siriUrl">https://krayqz.github.io/fixkosten/?q=</code><button class="btn small" type="button" id="siriCopy">Link kopieren</button></div>
+        <p class="hint">Wichtig: Der Kurzbefehl öffnet die Seite in Safari. Melde dich dort einmal an, dann klappt es immer. Geld bekommen? Sag z. B. „50 Euro von Oma bekommen“, dann wird es eine Einzahlung.</p>
+      </div>
+      <div class="box">
+        <strong>Ausprobieren</strong>
+        <p class="hint">Schreib hier, was du Siri sagen würdest. Es wird nichts gespeichert.</p>
+        <div class="row-btns bank-row"><input type="text" id="siriTry" placeholder="z. B. 12,50 Döner" autocomplete="off"><button class="btn" type="button" id="siriTest">Testen</button></div>
+        <p class="hint" id="siriTryOut" role="status"></p>
       </div>
     </section>
 
@@ -933,12 +966,16 @@ body.is-locked .wrap { visibility: hidden; }
     return Number.isFinite(n) ? round2(n) : NaN;
   };
   const toField = n => n ? n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-  const monthly = it => it.amount / (it.every || 1);
+  // a paused item (e.g. gym on hold) costs nothing until the day it is paused to
+  const pausedAt = (it, at) => !!it.pausedUntil && isoDay(at ? new Date(at) : new Date()) < it.pausedUntil;
+  const monthlyRaw = it => it.amount / (it.every || 1);
+  const monthly = it => pausedAt(it) ? 0 : monthlyRaw(it);
   // next debit on or after a day (default today), stepping from the date the person entered
   function nextDue(it, from) {
     if (!it.due) return null;
     const [y, m, d] = it.due.split("-").map(Number);
     const now = from ? new Date(from) : new Date(); now.setHours(0, 0, 0, 0);
+    if (it.pausedUntil) { const p = new Date(it.pausedUntil + "T00:00:00"); if (p > now) now.setTime(p.getTime()); }
     const at = k => { const mm = m - 1 + k * it.every; return new Date(y, mm, Math.min(d, new Date(y, mm + 1, 0).getDate())); };
     let k = 0;
     if (at(0) < now) k = Math.ceil(((now.getFullYear() - y) * 12 + now.getMonth() - (m - 1)) / it.every) - 1;
@@ -1146,7 +1183,7 @@ body.is-locked .wrap { visibility: hidden; }
     const end = state.payday ? (() => { const d = new Date(start); d.setDate(d.getDate() + 1); return nextPayday(state.payday, d).date; })()
       : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
     end.setHours(0, 0, 0, 0);
-    const costs = sum(state.items, it => isFull(it) ? ((d => d && d < end ? it.amount : 0)(nextDue(it, start))) : monthly(it));
+    const costs = sum(state.items, it => isFull(it) ? ((d => d && d < end ? it.amount : 0)(nextDue(it, start))) : pausedAt(it, start) ? 0 : monthlyRaw(it));
     const iso = d => isoDay(d);
     const plannedList = state.expenses.filter(e => isLater(e) && e.payOn >= iso(start) && e.payOn < iso(end));
     const planned = sum(plannedList, e => e.amount);
@@ -1589,10 +1626,11 @@ body.is-locked .wrap { visibility: hidden; }
     const due = nextDue(it);
     const when = (due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "")
       + (it.prev ? `<div class="meta num ${it.amount > it.prev.amount ? "warn-text" : "plus"}">Vorher ${fmt(it.prev.amount)}, seit ${fmtDate(it.prev.date)} ${it.amount > it.prev.amount ? "teurer" : "günstiger"} (${it.amount > it.prev.amount ? "+" : "−"}${fmt(Math.abs(it.amount - it.prev.amount))})</div>` : "")
+      + (pausedAt(it) ? `<div class="meta num paused-tag">⏸ Pausiert bis ${fmtDate(it.pausedUntil, true)} <button class="linklike" type="button" data-unpause="${it.id}">Pause beenden</button></div>` : "")
       + (it.ends ? `<div class="meta num${endingSoon(it) ? " warn-text" : ""}">${it.ends < today() ? "Ausgelaufen am" : "Läuft aus am"} ${fmtDate(it.ends, true)}</div>` : "");
     const missing = it.mode === "full" && it.every > 1 && !it.due ? `<div class="meta warn-text">Für „ganz im Abbuchungsmonat“ fehlt das Datum. Bis dahin wird anteilig gerechnet.</div>` : "";
-    return `<div class="item"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
-      <span class="num">${fmt(costNow(it))}</span>
+    return `<div class="item${pausedAt(it) ? " is-paused" : ""}"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
+      <span class="num">${fmt(pausedAt(it) ? monthlyRaw(it) : costNow(it))}</span>
       <span class="actions"><button class="icon" type="button" data-edit="${it.id}" aria-label="${esc(it.name)} ändern">✎</button><button class="icon" type="button" data-del="${it.id}" aria-label="${esc(it.name)} löschen">✕</button></span></div>`;
   }
   function costEditor(it) {
@@ -1604,6 +1642,10 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="ce-int">Wie oft abgebucht</label><select id="ce-int" name="every">${everyOptions(it.every)}</select></div>
         <div class="field"><label for="ce-due">Nächste Abbuchung</label><input type="date" id="ce-due" name="due" value="${it.due ? isoDay(nextDue(it)) : ""}"><button type="button" class="linklike clear-date" data-clear="ce-due">Datum entfernen</button></div>
         <div class="field"><label for="ce-ends">Vertrag läuft aus am</label><input type="date" id="ce-ends" name="ends" value="${it.ends || ""}"><button type="button" class="linklike clear-date" data-clear="ce-ends">Datum entfernen</button></div>
+        <div class="field wide pause-field"><label for="ce-pause">Pausieren bis (z. B. Fitnessstudio ruht)</label>
+          <div class="pause-quick"><button type="button" class="pause-chip" data-pause-months="1">1 Monat</button><button type="button" class="pause-chip" data-pause-months="2">2 Monate</button><button type="button" class="pause-chip" data-pause-months="3">3 Monate</button></div>
+          <input type="date" id="ce-pause" name="pausedUntil" value="${it.pausedUntil && it.pausedUntil > today() ? it.pausedUntil : ""}"><button type="button" class="linklike clear-date" data-clear="ce-pause">Pause entfernen</button>
+          <span class="hint">Bis zu diesem Tag wird nichts abgezogen. Danach läuft es automatisch weiter.</span></div>
         <div class="field wide mode-field"${it.every > 1 ? "" : " hidden"}><label for="ce-mode">Wie abziehen</label><select id="ce-mode" name="mode"><option value="spread"${it.mode !== "full" ? " selected" : ""}>Jeden Monat einen Teil weglegen</option><option value="full"${it.mode === "full" ? " selected" : ""}>Alles im Monat der Abbuchung abziehen</option></select></div>
       </div>
       <div class="row-btns"><button class="btn" type="submit">Speichern</button><button class="btn ghost" type="button" data-cancel>Abbrechen</button></div></form>`;
@@ -1643,6 +1685,7 @@ body.is-locked .wrap { visibility: hidden; }
       id: String(i.id || uid()), name: String(i.name), category: String(i.category || "Sonstiges"),
       amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1), mode: i.mode === "full" ? "full" : "spread",
       due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null, ends: /^\d{4}-\d{2}-\d{2}$/.test(i.ends) ? i.ends : null,
+      pausedUntil: /^\d{4}-\d{2}-\d{2}$/.test(i.pausedUntil) ? i.pausedUntil : null,
       prev: i.prev && Number.isFinite(Number(i.prev.amount)) ? { amount: Number(i.prev.amount), date: String(i.prev.date || "") } : null
     })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
@@ -1718,6 +1761,7 @@ body.is-locked .wrap { visibility: hidden; }
     else if (first) welcome = true;
     render();
     setStatus("ok", data ? "Gespeichert" : "Noch nichts gespeichert");
+    applyQuickAdd();
   }
 
   // --- events: income ---
@@ -1922,6 +1966,57 @@ body.is-locked .wrap { visibility: hidden; }
     scheduleSave();
   });
 
+  // --- Siri / Kurzbefehl: ?q=12,50 Döner (or ?add=12.5&name=Döner&cat=Essen) adds an entry ---
+  const QUICK_KEY = "fixkosten-quickadd";
+  (() => {
+    const u = new URLSearchParams(location.search);
+    if (!u.has("q") && !u.has("add")) return;
+    const job = { q: u.get("q") || "", add: u.get("add") || "", name: u.get("name") || "", cat: u.get("cat") || "", kind: u.get("in") ? "in" : "" };
+    try { sessionStorage.setItem(QUICK_KEY, JSON.stringify(job)); } catch {}
+    history.replaceState(null, "", location.pathname);
+  })();
+  const CAT_WORDS = { Essen: /döner|pizza|burger|essen|mcdonald|mc ?donalds|burger ?king|kfc|subway|bäcker|cafe|café|kaffee|restaurant|imbiss|lieferando|mensa/i,
+    Einkaufen: /rewe|lidl|aldi|edeka|netto|penny|kaufland|dm|rossmann|einkauf|supermarkt|amazon/i, Tanken: /tank|aral|shell|esso|jet|total|benzin|diesel|sprit/i,
+    Freizeit: /kino|bar|club|party|konzert|spiel|game|netflix|ausflug|fitness|bowling/i, Kleidung: /schuhe|jacke|hose|shirt|kleid|zalando|h&m|zara|primark|kleidung|pulli/i };
+  function parseQuick(text) {
+    let t = String(text || "").trim(), amount = NaN;
+    const kind = /bekommen|erhalten|einzahlung|eingezahlt|gutschrift/i.test(t) ? "in" : "out";
+    let m = t.match(/(\d+)\s*(?:€|euro|eur)\s*(?:und\s*)?(\d{1,2})(?!\d)(?:\s*(?:cent|ct))?/i);
+    if (m) amount = Number(m[1]) + Number(m[2]) / 100;
+    else if ((m = t.match(/\d+(?:[.,]\d{1,2})?/))) amount = parseEuro(m[0]);
+    let name = m ? t.replace(m[0], " ") : t;
+    name = name.replace(/€|\b(euro|eur|cent|ct|für|fuer|ausgegeben|bezahlt|bekommen|erhalten|einzahlung|eingezahlt|gutschrift|habe|hab|ich|ausgabe|eintragen|trag|ein|neue)\b/gi, " ").replace(/\s+/g, " ").trim();
+    name = name ? name[0].toUpperCase() + name.slice(1) : kind === "in" ? "Einzahlung" : "Ausgabe";
+    return { amount, name, kind };
+  }
+  function guessCat(name, wanted) {
+    const own = Object.keys(SPEND_CATS).find(c => c.toLowerCase() === String(wanted || "").toLowerCase());
+    if (own && PICK_CATS.includes(own)) return own;
+    const byName = PICK_CATS.find(c => name.toLowerCase().includes(c.toLowerCase()));
+    if (byName) return byName;
+    return Object.keys(CAT_WORDS).find(c => CAT_WORDS[c].test(name)) || "Sonstiges";
+  }
+  function applyQuickAdd() {
+    if (!user || !loaded) return;
+    let job = null;
+    try { job = JSON.parse(sessionStorage.getItem(QUICK_KEY) || "null"); sessionStorage.removeItem(QUICK_KEY); } catch {}
+    if (!job) return;
+    const p = job.q ? parseQuick(job.q) : { amount: parseEuro(job.add), name: (job.name || "Ausgabe").trim(), kind: job.kind || "out" };
+    if (Number.isNaN(p.amount) || p.amount <= 0) { toast(`<p>Siri: Ich habe keinen Betrag verstanden${job.q ? ` („${esc(job.q)}“)` : ""}. Bitte noch mal versuchen.</p>`); return; }
+    state.expenses.push({ id: uid(), kind: p.kind, name: p.name, amount: round2(p.amount), date: today(), cat: p.kind === "in" ? "Sonstiges" : guessCat(p.name, job.cat), payOn: null });
+    scheduleSave();
+    toast(`<p>✅ ${p.kind === "in" ? "Einzahlung" : "Ausgabe"} eingetragen: <b>${fmt(p.amount)}</b> für „${esc(p.name)}“. Mit ✎ unter „Einträge“ kannst du sie ändern.</p>`);
+  }
+  $("siriCopy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("siriUrl").textContent); $("siriCopy").textContent = "Kopiert ✓"; }
+    catch { getSelection().selectAllChildren($("siriUrl")); }
+  });
+  $("siriTest").addEventListener("click", () => {
+    const v = $("siriTry").value.trim(); if (!v) { $("siriTry").focus(); return; }
+    const p = parseQuick(v);
+    $("siriTryOut").textContent = Number.isNaN(p.amount) ? "Kein Betrag erkannt." : `Das würde eingetragen: ${p.kind === "in" ? "Einzahlung" : "Ausgabe"} ${fmt(p.amount)} für „${p.name}“ (${p.kind === "in" ? "Einzahlung" : guessCat(p.name)})`;
+  });
+
   // --- help center: every feature explained, with a search ---
   const HELP = [
     ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung.", "uebersicht"],
@@ -1954,6 +2049,8 @@ body.is-locked .wrap { visibility: hidden; }
     ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
     ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
+    ["⏸", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los."],
+    ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie."],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
     ["↻", "Neu laden und Abmelden", "", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Daneben kannst du dich abmelden."],
   ];
@@ -2016,7 +2113,7 @@ body.is-locked .wrap { visibility: hidden; }
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   const TAB_KEY = "fixkosten-tab";
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -2180,6 +2277,11 @@ body.is-locked .wrap { visibility: hidden; }
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.del) { state.items = state.items.filter(i => i.id !== b.dataset.del); scheduleSave(); }
     else if (b.dataset.edit) { editingCost = b.dataset.edit; render(); }
+    else if (b.dataset.unpause) { const it = state.items.find(i => i.id === b.dataset.unpause); if (it) { it.pausedUntil = null; scheduleSave(); } }
+    else if (b.dataset.pauseMonths) {
+      const d = new Date(); d.setMonth(d.getMonth() + Number(b.dataset.pauseMonths));
+      b.closest(".pause-field").querySelector("input").value = isoDay(d);
+    }
     else if (b.hasAttribute("data-cancel")) { editingCost = null; render(); }
   });
   $("ledger").addEventListener("submit", e => {
@@ -2188,7 +2290,8 @@ body.is-locked .wrap { visibility: hidden; }
     const amount = parseEuro(f.amount.value);
     if (Number.isNaN(amount) || amount <= 0) { f.amount.focus(); return; }
     if (round2(amount) !== round2(it.amount)) it.prev = { amount: it.amount, date: today() };
-    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, ends: f.ends.value || null, mode: f.mode.value === "full" ? "full" : "spread" });
+    Object.assign(it, { name: f.elements.name.value.trim(), category: f.category.value.trim(), amount, every: clampEvery(f.every.value), due: f.due.value || null, ends: f.ends.value || null, mode: f.mode.value === "full" ? "full" : "spread",
+      pausedUntil: f.pausedUntil.value > today() ? f.pausedUntil.value : null });
     editingCost = null; scheduleSave();
   });
 
