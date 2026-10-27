@@ -354,7 +354,9 @@ th, td { border-bottom-color: var(--line); }
 .help-item summary::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform .15s; }
 .help-item[open] summary::after { transform: rotate(90deg); }
 .help-item p { margin: 0 0 10px; color: var(--muted); line-height: 1.45; }
-.help-item .linklike { margin-bottom: 12px; }
+.help-acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.help-vid { font-size: .7rem; color: var(--accent); margin-left: 6px; }
+.help-video { display: block; width: 100%; max-width: 320px; margin: 0 auto 12px; border-radius: 14px; border: 1px solid var(--line); background: #000; }
 .sign-seg { margin-bottom: 10px; }
 .seg button[aria-pressed="true"][data-sign="+"] { background: var(--good); color: var(--accent-ink); }
 .seg button[aria-pressed="true"][data-sign="-"] { background: var(--bad); color: #fff; }
@@ -665,7 +667,7 @@ body.is-locked .wrap { visibility: hidden; }
 
     <section class="panel" aria-labelledby="helpH" data-tab="help">
       <h2 id="helpH">Hilfe</h2>
-      <p class="hint">Hier ist jede Funktion kurz erklärt. Such einfach nach einem Wort, zum Beispiel „PayPal“, „Lohn“ oder „Face ID“.</p>
+      <p class="hint">Hier ist jede Funktion kurz erklärt, bei vielen mit kurzem Video (▶). Such einfach nach einem Wort, zum Beispiel „PayPal“, „Lohn“ oder „Face ID“.</p>
       <div class="field help-search"><label for="helpQ" class="sr-only">Suchen</label><input type="search" id="helpQ" placeholder="🔍 Suchen …" autocomplete="off" enterkeyhint="search"></div>
       <div class="help-list" id="helpList"></div>
     </section>
@@ -1908,36 +1910,36 @@ body.is-locked .wrap { visibility: hidden; }
 
   // --- help center: every feature explained, with a search ---
   const HELP = [
-    ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung."],
-    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich."],
-    ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein."],
-    ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen."],
-    ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin."],
-    ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen."],
-    ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt."],
+    ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung.", "uebersicht"],
+    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich.", "spaeter"],
+    ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein.", "korrigieren"],
+    ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen.", "uebersicht"],
+    ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin.", "uebersicht"],
+    ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen.", "ausgabe"],
+    ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt.", "einzahlung"],
     ["✎", "Eintrag ändern oder löschen", "entries", "bearbeiten löschen falsch", "In der Liste bei „Einträge“ auf ✎ tippen zum Ändern, auf ✕ zum Löschen."],
-    ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“. Am Tag der Abbuchung fragt dich die App, ob sie abgebucht wurde, und zieht sie dann ab."],
-    ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung oder eines vorgemerkten Kaufs da, fragt dich die App beim Öffnen, ob es abgebucht bzw. gekauft wurde. Erst bei „Ja“ wird es vom Verfügbaren abgezogen. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal."],
-    ["🔢", "In Raten bezahlen", "entries", "raten ratenzahlung klarna abzahlen", "Bei „später bezahlen“ kannst du „In 2 Raten“, „In 3 Raten“ usw. wählen. Jede Rate wird in ihrem eigenen Monat abgezogen."],
-    ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe."],
-    ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“."],
-    ["💶", "Neuer Lohn ist da", "entries", "lohn gehalt neuer monat zeitraum übertrag minus mitnehmen", "Wenn dein Lohn kommt, unten bei „Einträge“ auf „Neuer Lohn ist da“ tippen. Dort bestätigst oder änderst du den Lohn (Hauptjob und Minijob) und nimmst übriges Geld oder ein Minus mit. Die alten Einträge landen im Verlauf."],
-    ["🗓️", "Kalender", "cal", "tag datum wann abbuchung", "Zeigt für jeden Tag, wann Lohn kommt, Fixkosten abgebucht werden, was du ausgegeben hast, was später abgebucht wird und was vorgemerkt ist. Tipp auf einen Tag für Details."],
-    ["📋", "Fixkosten hinzufügen und ändern", "costs", "miete vertrag handy versicherung abo posten", "Unter „Fixkosten“ auf „+ Fixkosten hinzufügen“ tippen: Name, Kategorie, Betrag, wie oft abgebucht wird und optional die nächste Abbuchung. Mit ✎ änderst du einen Posten."],
+    ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“. Am Tag der Abbuchung fragt dich die App, ob sie abgebucht wurde, und zieht sie dann ab.", "spaeter"],
+    ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung oder eines vorgemerkten Kaufs da, fragt dich die App beim Öffnen, ob es abgebucht bzw. gekauft wurde. Erst bei „Ja“ wird es vom Verfügbaren abgezogen. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal.", "nachfrage"],
+    ["🔢", "In Raten bezahlen", "entries", "raten ratenzahlung klarna abzahlen", "Bei „später bezahlen“ kannst du „In 2 Raten“, „In 3 Raten“ usw. wählen. Jede Rate wird in ihrem eigenen Monat abgezogen.", "raten"],
+    ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe.", "vormerken"],
+    ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“.", "kategorien"],
+    ["💶", "Neuer Lohn ist da", "entries", "lohn gehalt neuer monat zeitraum übertrag minus mitnehmen", "Wenn dein Lohn kommt, unten bei „Einträge“ auf „Neuer Lohn ist da“ tippen. Dort bestätigst oder änderst du den Lohn (Hauptjob und Minijob) und nimmst übriges Geld oder ein Minus mit. Die alten Einträge landen im Verlauf.", "lohn"],
+    ["🗓️", "Kalender", "cal", "tag datum wann abbuchung", "Zeigt für jeden Tag, wann Lohn kommt, Fixkosten abgebucht werden, was du ausgegeben hast, was später abgebucht wird und was vorgemerkt ist. Tipp auf einen Tag für Details.", "kalender"],
+    ["📋", "Fixkosten hinzufügen und ändern", "costs", "miete vertrag handy versicherung abo posten", "Unter „Fixkosten“ auf „+ Fixkosten hinzufügen“ tippen: Name, Kategorie, Betrag, wie oft abgebucht wird und optional die nächste Abbuchung. Mit ✎ änderst du einen Posten.", "fixkosten"],
     ["🔁", "Jährliche oder seltene Abbuchungen", "costs", "jährlich vierteljährlich halbjährlich kfz steuer versicherung weglegen", "Bei Posten, die nicht jeden Monat kommen, wählst du: jeden Monat einen Teil weglegen, oder alles im Monat der Abbuchung abziehen. Fürs Zweite braucht der Posten ein Datum."],
     ["📆", "Datum entfernen", "costs", "datum löschen leer", "Unter jedem Datumsfeld steht „Datum entfernen“. Damit machst du das Feld wieder leer."],
     ["⌛", "Vertrag läuft aus", "costs", "kündigen ende laufzeit vertrag", "Trag bei einem Posten „Vertrag läuft aus am“ ein. Kurz vorher erscheint eine Karte in der Übersicht, damit du rechtzeitig kündigen oder wechseln kannst."],
     ["📈", "Preiserhöhungen", "costs", "teurer günstiger preis erhöhung", "Änderst du den Betrag eines Postens, merkt sich die App den alten Preis. Bei „Fixkosten“ siehst du dann, was teurer oder günstiger geworden ist."],
-    ["📊", "Auswertung", "stats", "statistik kategorien vergleich jahr", "Unter „Mehr“ → „Auswertung“ siehst du, wofür dein Geld weggeht, den Vergleich mit den letzten Monaten und die Jahresübersicht."],
-    ["💡", "Spar-Hinweise", "stats", "sparen tipp zu viel", "Ganz oben in der Auswertung. Die App sagt dir, ob du zum Monatsende knapp wirst und wo du mehr als sonst ausgibst."],
-    ["🗒️", "Wochenrückblick", "stats", "woche letzte woche", "In der Auswertung und als Karte in der Übersicht: wie viel du letzte Woche ausgegeben hast, im Vergleich zur Woche davor."],
+    ["📊", "Auswertung", "stats", "statistik kategorien vergleich jahr", "Unter „Mehr“ → „Auswertung“ siehst du, wofür dein Geld weggeht, den Vergleich mit den letzten Monaten und die Jahresübersicht.", "auswertung"],
+    ["💡", "Spar-Hinweise", "stats", "sparen tipp zu viel", "Ganz oben in der Auswertung. Die App sagt dir, ob du zum Monatsende knapp wirst und wo du mehr als sonst ausgibst.", "auswertung"],
+    ["🗒️", "Wochenrückblick", "stats", "woche letzte woche", "In der Auswertung und als Karte in der Übersicht: wie viel du letzte Woche ausgegeben hast, im Vergleich zur Woche davor.", "auswertung"],
     ["📜", "Verlauf und Verlauf leeren", "stats", "alte monate history löschen", "Im Verlauf (in der Auswertung) siehst du deine alten Monate. Mit „Verlauf leeren“ löschst du ihn."],
-    ["🤝", "Geld verliehen & geliehen", "debts", "schulden leihen schuldet zurückzahlen", "Unter „Mehr“ trägst du ein, wem du Geld geliehen hast oder wem du etwas schuldest. Ist es zurückgezahlt, tipp auf ✓. Auf Wunsch wird es gleich als Ein- oder Ausgabe eingetragen."],
-    ["🏦", "Kontostand-Abgleich", "bank", "konto bank girokonto stimmt minus dispo", "Trag deinen Kontostand aus der Banking-App ein. Mit dem Schalter wählst du „Im Plus“ oder „Im Minus“. Die App zeigt, was drauf sein sollte, und kann den Unterschied für dich eintragen."],
-    ["🤔", "Was wäre wenn?", "whatif", "ausprobieren durchrechnen vertrag kaufen", "Probier aus, was ein Kauf oder ein neuer Vertrag mit deinem Geld machen würde, bevor du etwas einträgst. Hier wird nichts gespeichert."],
+    ["🤝", "Geld verliehen & geliehen", "debts", "schulden leihen schuldet zurückzahlen", "Unter „Mehr“ trägst du ein, wem du Geld geliehen hast oder wem du etwas schuldest. Ist es zurückgezahlt, tipp auf ✓. Auf Wunsch wird es gleich als Ein- oder Ausgabe eingetragen.", "schulden"],
+    ["🏦", "Kontostand-Abgleich", "bank", "konto bank girokonto stimmt minus dispo", "Trag deinen Kontostand aus der Banking-App ein. Mit dem Schalter wählst du „Im Plus“ oder „Im Minus“. Die App zeigt, was drauf sein sollte, und kann den Unterschied für dich eintragen.", "kontostand"],
+    ["🤔", "Was wäre wenn?", "whatif", "ausprobieren durchrechnen vertrag kaufen", "Probier aus, was ein Kauf oder ein neuer Vertrag mit deinem Geld machen würde, bevor du etwas einträgst. Hier wird nichts gespeichert.", "wasware"],
     ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
-    ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal."],
+    ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
     ["↻", "Neu laden und Abmelden", "", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Daneben kannst du dich abmelden."],
   ];
@@ -1946,10 +1948,19 @@ body.is-locked .wrap { visibility: hidden; }
     const words = q.split(/\s+/).filter(Boolean);
     const hits = HELP.filter(h => words.every(w => (h[1] + " " + h[3] + " " + h[4]).toLowerCase().includes(w)));
     $("helpList").innerHTML = hits.length
-      ? hits.map(([ico, title, go, , text]) => `<details class="help-item"${words.length && hits.length <= 3 ? " open" : ""}><summary><span aria-hidden="true">${ico}</span>${esc(title)}</summary><p>${esc(text)}</p>${go ? `<button class="linklike" type="button" data-go="${go}">Hinbringen ›</button>` : ""}</details>`).join("")
+      ? hits.map(([ico, title, go, , text, vid]) => `<details class="help-item"${words.length && hits.length <= 3 ? " open" : ""}><summary><span aria-hidden="true">${ico}</span>${esc(title)}${vid ? `<span class="help-vid" aria-label="mit Video">▶</span>` : ""}</summary><p>${esc(text)}</p>`
+        + `<div class="help-acts">${vid ? `<button class="btn small" type="button" data-video="${vid}">▶ Video ansehen</button>` : ""}${go ? `<button class="linklike" type="button" data-go="${go}">Hinbringen ›</button>` : ""}</div></details>`).join("")
       : `<div class="empty"><strong>Nichts gefunden</strong>Versuch ein anderes Wort, zum Beispiel „Lohn“, „PayPal“ oder „Konto“.</div>`;
   }
   $("helpQ").addEventListener("input", renderHelp);
+  // explainer clips are recorded with made-up demo data; loaded only when tapped
+  $("helpList").addEventListener("click", e => {
+    const b = e.target.closest("[data-video]"); if (!b) return;
+    const v = document.createElement("video");
+    Object.assign(v, { src: `videos/${b.dataset.video}.mp4`, controls: true, autoplay: true, muted: true, playsInline: true });
+    v.className = "help-video";
+    b.closest(".help-acts").before(v); b.remove();
+  });
   renderHelp();
 
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
