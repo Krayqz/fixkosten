@@ -1227,7 +1227,8 @@ body.is-locked .wrap { visibility: hidden; }
     const planned = sum(plannedList, e => e.amount);
     const later = sum(state.expenses.filter(e => isLater(e) && e.payOn >= iso(end)), e => e.amount)
       + sum(state.reserved.filter(r => r.date && r.date >= iso(end)), r => r.amount);
-    const carry = t.avail - laterDueNow() - t.reserved;
+    // money reserved for this month stays under the ring only; it is not carried into next month's view
+    const carry = t.avail - laterDueNow();
     const reservedList = state.reserved.filter(r => r.date && r.date >= resCut() && r.date < iso(end));
     const reserved = sum(reservedList, r => r.amount);
     // what is due in that period, shown right on the card
@@ -1249,7 +1250,6 @@ body.is-locked .wrap { visibility: hidden; }
         ${row("Fixkosten im nächsten Monat", -n.costs)}
         ${row(t.avail < 0 ? "Minus von jetzt" : "Übrig von jetzt", t.avail, t.avail < 0 ? "minus" : "plus")}
         ${laterDueNow() ? row("Später bezahlen, noch vor dem Lohn", -laterDueNow()) : ""}
-        ${t.reserved ? row("Vorgemerkt, noch diesen Monat", -t.reserved) : ""}
         ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
         ${n.reserved ? row("Vorgemerkt für dann", -n.reserved) : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
