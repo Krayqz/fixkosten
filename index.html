@@ -1049,8 +1049,8 @@ body.is-locked .wrap { visibility: hidden; }
 
   // reserved money counts now only up to the next wage and only within this calendar month
   // (something reserved for November shows up in "Nächster Monat", not under the ring in October)
-  function resCut() {
-    const end = periodWindow().end, now = new Date(), month = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  function resCut(ahead = 0, end = periodWindow().end) {
+    const now = new Date(), month = new Date(now.getFullYear(), now.getMonth() + 1 + ahead, 1);
     return isoDay(month < end ? month : end);
   }
   function totals() {
@@ -1225,11 +1225,13 @@ body.is-locked .wrap { visibility: hidden; }
     const iso = d => isoDay(d);
     const plannedList = state.expenses.filter(e => isLater(e) && e.payOn >= iso(start) && e.payOn < iso(end));
     const planned = sum(plannedList, e => e.amount);
+    // reserved money for next month: only what falls into that calendar month (December stays out of November)
+    const resNext = resCut(1, end);
     const later = sum(state.expenses.filter(e => isLater(e) && e.payOn >= iso(end)), e => e.amount)
-      + sum(state.reserved.filter(r => r.date && r.date >= iso(end)), r => r.amount);
+      + sum(state.reserved.filter(r => r.date && r.date >= resNext), r => r.amount);
     // money reserved for this month stays under the ring only; it is not carried into next month's view
     const carry = t.avail - laterDueNow();
-    const reservedList = state.reserved.filter(r => r.date && r.date >= resCut() && r.date < iso(end));
+    const reservedList = state.reserved.filter(r => r.date && r.date >= resCut() && r.date < resNext);
     const reserved = sum(reservedList, r => r.amount);
     // what is due in that period, shown right on the card
     const due = [...plannedList.map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: e.amount })), ...reservedList.map(r => ({ ico: "📌", name: r.name, date: r.date, amount: r.amount }))]
