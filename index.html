@@ -360,6 +360,10 @@ th, td { border-bottom-color: var(--line); }
 .help-item p { margin: 0 0 10px; color: var(--muted); line-height: 1.45; }
 .help-acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .help-vid { font-size: .7rem; color: var(--accent); margin-left: 6px; }
+.extra-in { display: grid; gap: 8px; }
+.extra-row { display: grid; grid-template-columns: 1fr 120px auto; gap: 8px; align-items: center; }
+.extra-row input[type=text] { min-width: 0; }
+#addExtraIn { justify-self: start; margin: 4px 0 6px; }
 .voice-box { margin-top: 12px; } .voice-box .hint { margin-bottom: 14px; } #voicePick { flex: 1; min-width: 0; }
 .help-video { display: block; width: 100%; max-width: 320px; margin: 0 auto 12px; border-radius: 14px; border: 1px solid var(--line); background: #000; }
 .sign-seg { margin-bottom: 10px; }
@@ -796,6 +800,8 @@ body.is-locked .wrap { visibility: hidden; }
         <label for="minijob">Minijob im Monat</label>
         <div class="money"><input id="minijob" inputmode="decimal" autocomplete="off" placeholder="0,00"><span>€</span></div>
       </div>
+      <div class="extra-in" id="extraIncomes"></div>
+      <button class="btn outline small" type="button" id="addExtraIn">+ Weitere feste Einnahme (z. B. Kindergeld)</button>
       <div class="income-total"><span>Gesamt</span><span class="num" id="incomeTotal">0,00 €</span></div>
       <div class="field">
         <label for="payday">Lohn kommt am (Tag im Monat)</label>
@@ -970,7 +976,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null, extraIn: [] });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -1053,8 +1059,10 @@ body.is-locked .wrap { visibility: hidden; }
     const now = new Date(), month = new Date(now.getFullYear(), now.getMonth() + 1 + ahead, 1);
     return isoDay(month < end ? month : end);
   }
+  // wage plus side job plus other fixed income such as Kindergeld
+  const incomeSum = () => (state.mainIncome || 0) + (state.minijob || 0) + sum(state.extraIn, x => x.amount);
   function totals() {
-    const income = (state.mainIncome || 0) + (state.minijob || 0);
+    const income = incomeSum();
     const costs = sum(state.items, costNow);
     const savings = sum(state.items.filter(i => i.category === SAVING_CAT), costNow);
     const spent = sum(active().filter(e => e.kind !== "in"), e => e.amount);
@@ -1454,8 +1462,7 @@ body.is-locked .wrap { visibility: hidden; }
       }
     }
     if (state.payday) {
-      const income = (state.mainIncome || 0) + (state.minijob || 0);
-      add(isoDay(new Date(y, m, Math.min(state.payday, last.getDate()))), { type: "pay", ico: "💰", name: "Lohn", sub: "Hauptjob und Minijob", amount: income });
+      add(isoDay(new Date(y, m, Math.min(state.payday, last.getDate()))), { type: "pay", ico: "💰", name: "Lohn", sub: state.extraIn.length ? "Lohn und feste Einnahmen" : "Hauptjob und Minijob", amount: incomeSum() });
     }
     return ev;
   }
@@ -1607,6 +1614,11 @@ body.is-locked .wrap { visibility: hidden; }
     $("incomeTotal").textContent = fmt(t.income);
     if (document.activeElement !== $("mainIncome")) $("mainIncome").value = toField(state.mainIncome);
     if (document.activeElement !== $("minijob")) $("minijob").value = toField(state.minijob);
+    // redraw the list only when nobody is typing in it, so the keyboard stays open
+    if (!$("extraIncomes").contains(document.activeElement)) $("extraIncomes").innerHTML = state.extraIn.map(x => `<div class="extra-row" data-extra="${x.id}">
+        <input type="text" data-extra-name aria-label="Was für eine Einnahme" placeholder="z. B. Kindergeld" value="${esc(x.name)}">
+        <div class="money"><input data-extra-amount inputmode="decimal" aria-label="Betrag im Monat" placeholder="0,00" value="${x.amount ? toField(x.amount) : ""}"><span>€</span></div>
+        <button class="icon" type="button" data-extra-del aria-label="${esc(x.name || "Einnahme")} löschen">✕</button></div>`).join("");
     if (document.activeElement !== $("payday")) $("payday").value = state.payday || "";
     document.querySelectorAll("[data-autopay]").forEach(b => { b.setAttribute("aria-checked", String(state.autoPay === (b.dataset.autopay === "1"))); b.disabled = !state.payday; });
     $("autoPayHint").textContent = !state.payday ? "Trag zuerst oben ein, an welchem Tag dein Lohn kommt."
@@ -1734,6 +1746,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.balance = d.balance && Number.isFinite(Number(d.balance.amount)) ? { amount: Number(d.balance.amount), date: String(d.balance.date || "") } : null;
     s.mainIncome = Number(d.mainIncome) || 0;
     s.minijob = Number(d.minijob) || 0;
+    s.extraIn = Array.isArray(d.extraIn) ? d.extraIn.filter(x => x && typeof x === "object").map(x => ({ id: String(x.id || uid()), name: String(x.name || ""), amount: Number(x.amount) || 0 })) : [];
     const pd = Math.round(Number(d.payday));
     s.payday = pd >= 1 && pd <= 31 ? pd : null;
     s.items = Array.isArray(d.items) ? d.items.filter(i => i && i.name).map(i => ({
@@ -1775,9 +1788,14 @@ body.is-locked .wrap { visibility: hidden; }
     if (!user) return;
     try { localStorage.setItem(CACHE_KEY + user.id, JSON.stringify(serialize())); } catch {}
   }
+  // changes made without internet survive closing the app and are uploaded on the next start
+  const PENDING_KEY = "fixkosten-pending-";
+  const setPending = on => { if (!user) return; try { on ? localStorage.setItem(PENDING_KEY + user.id, "1") : localStorage.removeItem(PENDING_KEY + user.id); } catch {} };
+  const offlineNote = () => setStatus("busy", "Offline gespeichert ✓");
   function scheduleSave() {
     welcome = false;
     unsaved = true;
+    setPending(true);
     render();
     cacheState();
     clearTimeout(saveTimer);
@@ -1788,18 +1806,20 @@ body.is-locked .wrap { visibility: hidden; }
     saveTimer = null;
     clearTimeout(retryTimer);
     if (!user) return;
-    if (!loaded) { setStatus("err", "Offline. Deine Änderung wird gespeichert, sobald du wieder Internet hast."); return; }
+    if (!loaded) { offlineNote(); return; }
     const data = serialize();
     saving = true;
     const { error } = await sb.from("budgets").upsert({ user_id: user.id, data, updated_at: data.updatedAt });
     saving = false;
     if (saveTimer) return; // a newer change is already queued
     if (error) {
-      setStatus("err", "Nicht gespeichert. Prüf deine Internetverbindung, ich versuche es gleich nochmal.");
+      if (navigator.onLine === false) offlineNote();
+      else setStatus("err", "Nicht gespeichert. Prüf deine Internetverbindung, ich versuche es gleich nochmal.");
       retryTimer = setTimeout(save, 15000);
       return;
     }
     unsaved = false;
+    setPending(false);
     setStatus("ok", "Gespeichert");
   }
   async function loadRemote() {
@@ -1808,7 +1828,7 @@ body.is-locked .wrap { visibility: hidden; }
     const { data, error } = await sb.from("budgets").select("data").eq("user_id", id).maybeSingle();
     if (!user || user.id !== id) return;
     if (error) {
-      if (!loaded) setStatus("err", "Offline. Du siehst den zuletzt gespeicherten Stand.");
+      if (!loaded) { unsaved ? offlineNote() : setStatus("err", "Offline. Du siehst den zuletzt gespeicherten Stand."); clearTimeout(retryTimer); retryTimer = setTimeout(loadRemote, 15000); }
       return;
     }
     const first = !loaded;
@@ -1831,6 +1851,21 @@ body.is-locked .wrap { visibility: hidden; }
     });
     $(key).addEventListener("blur", render);
   }
+  $("addExtraIn").addEventListener("click", () => {
+    state.extraIn.push({ id: uid(), name: "", amount: 0 }); scheduleSave();
+    $("extraIncomes").lastElementChild?.querySelector("[data-extra-name]")?.focus();
+  });
+  $("extraIncomes").addEventListener("input", e => {
+    const row = e.target.closest("[data-extra]"), x = row && state.extraIn.find(i => i.id === row.dataset.extra); if (!x) return;
+    if (e.target.matches("[data-extra-name]")) x.name = e.target.value;
+    else { const n = parseEuro(e.target.value); if (Number.isNaN(n)) return; x.amount = n; }
+    scheduleSave();
+  });
+  $("extraIncomes").addEventListener("focusout", () => setTimeout(() => { if (!$("extraIncomes").contains(document.activeElement)) render(); }));
+  $("extraIncomes").addEventListener("click", e => {
+    const row = e.target.closest("[data-extra-del]") && e.target.closest("[data-extra]"); if (!row) return;
+    state.extraIn = state.extraIn.filter(i => i.id !== row.dataset.extra); scheduleSave();
+  });
   $("payday").addEventListener("input", e => {
     const n = Math.round(Number(e.target.value));
     state.payday = e.target.value && n >= 1 && n <= 31 ? n : null;
@@ -2089,6 +2124,8 @@ body.is-locked .wrap { visibility: hidden; }
     ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin.", "uebersicht"],
     ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen.", "ausgabe"],
     ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt.", "einzahlung"],
+    ["📶", "Ohne Internet eintragen", "entries", "offline internet netz kein empfang funkloch flugmodus", "Du kannst auch ohne Internet Ausgaben eintragen. Oben steht dann „Offline gespeichert ✓“. Sobald du wieder Internet hast, lädt die App alles automatisch hoch, auch wenn du sie zwischendurch geschlossen hast."],
+    ["👯", "Doppelte Einträge", "entries", "doppelt zweimal versehentlich nochmal gleich", "Trägst du eine Ausgabe mit gleichem Namen, Betrag und Tag ein zweites Mal ein, fragt die App vorher nach, ob das wirklich so gewollt ist."],
     ["✎", "Eintrag ändern oder löschen", "entries", "bearbeiten löschen falsch", "In der Liste bei „Einträge“ auf ✎ tippen zum Ändern, auf ✕ zum Löschen."],
     ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“. Am Tag der Abbuchung fragt dich die App, ob sie abgebucht wurde, und zieht sie dann ab.", "spaeter"],
     ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung oder eines vorgemerkten Kaufs da, fragt dich die App beim Öffnen, ob es abgebucht bzw. gekauft wurde. Erst bei „Ja“ wird es vom Verfügbaren abgezogen. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal.", "nachfrage"],
@@ -2110,7 +2147,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["🤝", "Geld verliehen & geliehen", "debts", "schulden leihen schuldet zurückzahlen", "Unter „Mehr“ trägst du ein, wem du Geld geliehen hast oder wem du etwas schuldest. Ist es zurückgezahlt, tipp auf ✓. Auf Wunsch wird es gleich als Ein- oder Ausgabe eingetragen.", "schulden"],
     ["🏦", "Kontostand-Abgleich", "bank", "konto bank girokonto stimmt minus dispo", "Trag deinen Kontostand aus der Banking-App ein. Mit dem Schalter wählst du „Im Plus“ oder „Im Minus“. Die App zeigt, was drauf sein sollte, und kann den Unterschied für dich eintragen.", "kontostand"],
     ["🤔", "Was wäre wenn?", "whatif", "ausprobieren durchrechnen vertrag kaufen", "Probier aus, was ein Kauf oder ein neuer Vertrag mit deinem Geld machen würde, bevor du etwas einträgst. Hier wird nichts gespeichert.", "wasware"],
-    ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
+    ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag kindergeld wohngeld unterhalt einnahme", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Mit „+ Weitere feste Einnahme“ kommen z. B. Kindergeld oder Wohngeld dazu, die jeden Monat gleich sind. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
     ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
     ["⏸", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
@@ -2245,8 +2282,12 @@ body.is-locked .wrap { visibility: hidden; }
     e.preventDefault();
     const amount = parseEuro($("spendAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
-    const before = new Set(warnings(totals()).map(([k]) => k));
     const date = $("spendDate").value || today();
+    // same name, amount and day as an entry that is already there: probably tapped twice
+    const nm = $("spendName").value.trim().toLowerCase();
+    const twin = state.expenses.find(x => x.kind === spendKind && x.date === date && Math.abs(x.amount - amount) < 0.005 && x.name.trim().toLowerCase() === nm);
+    if (twin && !confirm(`„${twin.name || (spendKind === "in" ? "Einzahlung" : "Ausgabe")}“ mit ${fmt(amount)} hast du ${date === today() ? "heute" : "an dem Tag"} schon eingetragen. Wirklich nochmal eintragen?`)) return;
+    const before = new Set(warnings(totals()).map(([k]) => k));
     const later = spendKind !== "in" && $("spendLater").checked && $("spendPayOn").value;
     const rates = later ? Number($("spendRates").value) || 1 : 1, name = $("spendName").value.trim();
     // installments: one entry per month, the last one takes the rounding difference
@@ -2318,7 +2359,7 @@ body.is-locked .wrap { visibility: hidden; }
   // fixed payday: start the new month by itself once the day has come (one month at a time, undo possible)
   let autoUndo = null;
   function autoWage() {
-    if (!user || !loaded || !state.autoPay || !state.payday || !state.periodStart || !state.mainIncome && !state.minijob) return;
+    if (!user || !loaded || !state.autoPay || !state.payday || !state.periodStart || !incomeSum()) return;
     const begun = new Date(state.periodStart), from = new Date(begun); from.setDate(from.getDate() + 1);
     const pay = nextPayday(state.payday, from).date; pay.setHours(0, 0, 0, 0);
     const iso = isoDay(pay);
@@ -2521,6 +2562,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("auth").hidden = !!user; $("app").hidden = !user; $("logoutBtn").hidden = !user;
     if (!user) { state = blank(); render(); setStatus("idle", ""); $("authEmail").focus(); return; }
     try { const c = localStorage.getItem(CACHE_KEY + user.id); state = c ? normalize(JSON.parse(c)) : blank(); } catch { state = blank(); }
+    try { unsaved = !!localStorage.getItem(PENDING_KEY + user.id); } catch {}
     if (lockCfg() && !justReloaded()) lockNow(); else unlock();
     render();
     setStatus("busy", "Lädt …");
@@ -2694,16 +2736,24 @@ body.is-locked .wrap { visibility: hidden; }
       return;
     }
     sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    // without internet an expired login can't be renewed; keep using the stored one until we are back online
+    const storedUser = () => {
+      if (navigator.onLine !== false) return null;
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) return JSON.parse(localStorage.getItem(k))?.user || null; } } catch {}
+      return null;
+    };
     sb.auth.onAuthStateChange((event, session) => {
       setTimeout(() => {
+        if (!session && event !== "SIGNED_OUT" && storedUser()) return;
         setUser(session?.user || null);
         if (event === "PASSWORD_RECOVERY") showNewPassword(true);
       }, 0);
     });
-    const { data } = await sb.auth.getSession();
-    setUser(data.session?.user || null);
+    const { data } = await sb.auth.getSession().catch(() => ({ data: {} }));
+    setUser(data?.session?.user || storedUser());
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadRemote(); });
-    window.addEventListener("online", () => { if (unsaved) save(); else loadRemote(); });
+    window.addEventListener("online", () => { if (unsaved && loaded) save(); else loadRemote(); });
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   })();
 })();
 </script>
