@@ -1047,6 +1047,12 @@ body.is-locked .wrap { visibility: hidden; }
     return `var(${EXTRA_COLORS[custom.indexOf(cat) % EXTRA_COLORS.length]})`;
   }
 
+  // reserved money counts now only up to the next wage and only within this calendar month
+  // (something reserved for November shows up in "Nächster Monat", not under the ring in October)
+  function resCut() {
+    const end = periodWindow().end, now = new Date(), month = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return isoDay(month < end ? month : end);
+  }
   function totals() {
     const income = (state.mainIncome || 0) + (state.minijob || 0);
     const costs = sum(state.items, costNow);
@@ -1055,8 +1061,7 @@ body.is-locked .wrap { visibility: hidden; }
     const added = sum(active().filter(e => e.kind === "in"), e => e.amount);
     const rest = income - costs;
     // reserved money only counts in the wage period it is meant for (undated: now)
-    const resEnd = isoDay(periodWindow().end);
-    const reserved = sum(state.reserved.filter(r => !r.date || r.date < resEnd), r => r.amount);
+    const reserved = sum(state.reserved.filter(r => !r.date || r.date < resCut()), r => r.amount);
     return { income, costs, savings, spent, added, rest, reserved, avail: rest + added - spent };
   }
 
@@ -1222,8 +1227,9 @@ body.is-locked .wrap { visibility: hidden; }
     const planned = sum(plannedList, e => e.amount);
     const later = sum(state.expenses.filter(e => isLater(e) && e.payOn >= iso(end)), e => e.amount)
       + sum(state.reserved.filter(r => r.date && r.date >= iso(end)), r => r.amount);
-    const carry = t.avail - laterDueNow() - t.reserved;
-    const reservedList = state.reserved.filter(r => r.date && r.date >= iso(start) && r.date < iso(end));
+    // money reserved for this month stays under the ring only; it is not carried into next month's view
+    const carry = t.avail - laterDueNow();
+    const reservedList = state.reserved.filter(r => r.date && r.date >= resCut() && r.date < iso(end));
     const reserved = sum(reservedList, r => r.amount);
     // what is due in that period, shown right on the card
     const due = [...plannedList.map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: e.amount })), ...reservedList.map(r => ({ ico: "📌", name: r.name, date: r.date, amount: r.amount }))]
@@ -1242,7 +1248,8 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="nm-body">
         ${row("Lohn", n.income)}
         ${row("Fixkosten im nächsten Monat", -n.costs)}
-        ${row((n.carry < 0 ? "Minus von jetzt" : "Übrig von jetzt") + (laterDueNow() || t.reserved ? " (nach „später bezahlen“/vorgemerkt)" : ""), n.carry, n.carry < 0 ? "minus" : "plus")}
+        ${row(t.avail < 0 ? "Minus von jetzt" : "Übrig von jetzt", t.avail, t.avail < 0 ? "minus" : "plus")}
+        ${laterDueNow() ? row("Später bezahlen, noch vor dem Lohn", -laterDueNow()) : ""}
         ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
         ${n.reserved ? row("Vorgemerkt für dann", -n.reserved) : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
