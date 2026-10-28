@@ -469,6 +469,12 @@ th, td { border-bottom-color: var(--line); }
 .warn b { color: #fff; }
 .toast { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 50; max-width: 528px; margin: 0 auto; background: #2a1512; border: 1px solid #ff6b5e; color: #ffd2cc; border-radius: 14px; padding: 12px 16px; font-size: .92rem; box-shadow: 0 10px 30px #000a; display: grid; gap: 4px; }
 .toast b { color: #fff; }
+.toast.ok { background: #10241a; border-color: var(--accent); color: #d4f5e2; }
+.toast .linklike { justify-self: start; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg-btn { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 12px; padding: 10px 8px; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; min-height: 48px; }
+.seg-btn[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.seg-btn:disabled { opacity: .45; }
 .lock-head { display: flex; justify-content: space-between; align-items: baseline; }
 .lock-setup { display: grid; gap: 10px; }
 #lockBtns:empty { display: none; }
@@ -796,6 +802,14 @@ body.is-locked .wrap { visibility: hidden; }
         <input type="number" id="payday" min="1" max="31" inputmode="numeric" placeholder="z. B. 28">
         <span class="hint">Dann siehst du oben dein Tagesbudget: wie viel du heute noch ausgeben kannst.</span>
       </div>
+      <div class="field" id="autoPayField">
+        <span class="flabel" id="autoPayL">Kommt dein Lohn immer pünktlich am gleichen Tag?</span>
+        <div class="seg" role="radiogroup" aria-labelledby="autoPayL">
+          <button type="button" class="seg-btn" role="radio" data-autopay="1">Ja, immer fix</button>
+          <button type="button" class="seg-btn" role="radio" data-autopay="0">Nein, unterschiedlich</button>
+        </div>
+        <span class="hint" id="autoPayHint"></span>
+      </div>
     </section>
   </div>
 
@@ -956,7 +970,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -1188,9 +1202,9 @@ body.is-locked .wrap { visibility: hidden; }
     $("warn").innerHTML = w.map(([, text]) => `<p><span aria-hidden="true">⚠️</span> ${text}</p>`).join("");
   }
   let toastTimer = null;
-  function toast(html) {
-    $("toast").innerHTML = html; $("toast").hidden = false;
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; }, 5000);
+  function toast(html, kind, ms) {
+    $("toast").innerHTML = html; $("toast").hidden = false; $("toast").classList.toggle("ok", kind === "ok");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; }, ms || 5000);
   }
 
   // preview of the next wage period: wage minus the fixed costs due then, plus what is left (or minus) now,
@@ -1585,6 +1599,10 @@ body.is-locked .wrap { visibility: hidden; }
     if (document.activeElement !== $("mainIncome")) $("mainIncome").value = toField(state.mainIncome);
     if (document.activeElement !== $("minijob")) $("minijob").value = toField(state.minijob);
     if (document.activeElement !== $("payday")) $("payday").value = state.payday || "";
+    document.querySelectorAll("[data-autopay]").forEach(b => { b.setAttribute("aria-checked", String(state.autoPay === (b.dataset.autopay === "1"))); b.disabled = !state.payday; });
+    $("autoPayHint").textContent = !state.payday ? "Trag zuerst oben ein, an welchem Tag dein Lohn kommt."
+      : state.autoPay ? `Am ${state.payday}. startet die App den neuen Monat von selbst und nimmt übriges Geld (oder ein Minus) mit. Kommt der Lohn mal früher, kannst du trotzdem selbst auf „Neuer Lohn ist da“ tippen.`
+      : "Du tippst selbst bei „Einträge“ auf „Neuer Lohn ist da“, sobald der Lohn auf dem Konto ist.";
   }
 
   function renderSpending(t) {
@@ -1732,6 +1750,8 @@ body.is-locked .wrap { visibility: hidden; }
     s.periodStart = typeof d.periodStart === "string" ? d.periodStart : null;
     if ("warnBelow" in d) s.warnBelow = d.warnBelow === null || d.warnBelow === "" ? null : Number(d.warnBelow) || 0;
     if ("warnDaily" in d) s.warnDaily = d.warnDaily !== false;
+    s.autoPay = d.autoPay === true;
+    s.autoSkip = /^\d{4}-\d{2}-\d{2}$/.test(d.autoSkip) ? d.autoSkip : null;
     s.history = Array.isArray(d.history) ? d.history.filter(h => h && h.end).slice(0, 24).map(h => ({
       start: typeof h.start === "string" ? h.start : null, end: String(h.end),
       spent: Number(h.spent) || 0, added: Number(h.added) || 0, carried: Number(h.carried) || 0,
@@ -1789,6 +1809,7 @@ body.is-locked .wrap { visibility: hidden; }
     else if (first) welcome = true;
     render();
     setStatus("ok", data ? "Gespeichert" : "Noch nichts gespeichert");
+    autoWage();
     applyQuickAdd();
   }
 
@@ -1807,6 +1828,10 @@ body.is-locked .wrap { visibility: hidden; }
     scheduleSave();
   });
   $("payday").addEventListener("blur", render);
+  $("autoPayField").addEventListener("click", e => {
+    const b = e.target.closest("[data-autopay]"); if (!b || b.disabled) return;
+    state.autoPay = b.dataset.autopay === "1"; scheduleSave(); autoWage();
+  });
 
   // --- events: spending ---
   function setKind(kind) {
@@ -2062,6 +2087,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe.", "vormerken"],
     ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“.", "kategorien"],
     ["💶", "Neuer Lohn ist da", "entries", "lohn gehalt neuer monat zeitraum übertrag minus mitnehmen", "Wenn dein Lohn kommt, unten bei „Einträge“ auf „Neuer Lohn ist da“ tippen. Dort bestätigst oder änderst du den Lohn (Hauptjob und Minijob) und nimmst übriges Geld oder ein Minus mit. Die alten Einträge landen im Verlauf.", "lohn"],
+    ["🔄", "Lohn automatisch starten", "income", "automatisch lohn fix pünktlich gleicher tag neuer monat umschalten", "Unter „Mehr“ → „Lohn & Einkommen“ wählst du, ob dein Lohn immer am gleichen Tag kommt. Bei „Ja, immer fix“ startet die App am Lohntag den neuen Monat von selbst und nimmt übriges Geld oder ein Minus mit (mit „Rückgängig“). Bei „Nein, unterschiedlich“ tippst du wie bisher selbst auf „Neuer Lohn ist da“.", "autolohn"],
     ["🗓️", "Kalender", "cal", "tag datum wann abbuchung", "Zeigt für jeden Tag, wann Lohn kommt, Fixkosten abgebucht werden, was du ausgegeben hast, was später abgebucht wird und was vorgemerkt ist. Tipp auf einen Tag für Details.", "kalender"],
     ["📋", "Fixkosten hinzufügen und ändern", "costs", "miete vertrag handy versicherung abo posten", "Unter „Fixkosten“ auf „+ Fixkosten hinzufügen“ tippen: Name, Kategorie, Betrag, wie oft abgebucht wird und optional die nächste Abbuchung. Mit ✎ änderst du einen Posten.", "fixkosten"],
     ["🔁", "Jährliche oder seltene Abbuchungen", "costs", "jährlich vierteljährlich halbjährlich kfz steuer versicherung weglegen", "Bei Posten, die nicht jeden Monat kommen, wählst du: jeden Monat einen Teil weglegen, oder alles im Monat der Abbuchung abziehen. Fürs Zweite braucht der Posten ein Datum."],
@@ -2257,8 +2283,15 @@ body.is-locked .wrap { visibility: hidden; }
   $("resetBtn").addEventListener("click", () => { showReset(true); $("resetNo").focus(); });
   $("resetNo").addEventListener("click", () => { showReset(false); $("resetBtn").focus(); });
   $("resetYes").addEventListener("click", () => {
-    const t = totals(), now = new Date().toISOString();
-    const carried = $("carryOver").checked ? round2(t.avail) : 0;
+    startPeriod(new Date().toISOString(), $("carryOver").checked, parseEuro($("resetMain").value), parseEuro($("resetMini").value));
+    editingSpend = null;
+    showReset(false);
+    scheduleSave();
+  });
+  // archive the running period and start a new one (by hand or automatically on a fixed payday)
+  function startPeriod(now, carry, main, mini) {
+    const t = totals();
+    const carried = carry ? round2(t.avail) : 0;
     state.history = [{ start: state.periodStart, end: now, spent: round2(t.spent), added: round2(t.added), carried, byCat: spendByCat(),
       income: round2(t.income), costs: round2(t.costs), savings: round2(t.savings), extra: round2(extraIn()) }, ...state.history].slice(0, 24);
     const later = state.expenses.filter(isLater);
@@ -2267,12 +2300,31 @@ body.is-locked .wrap { visibility: hidden; }
       : [{ id: uid(), kind: "out", name: "Minus aus dem Vormonat", amount: -carried, date: today(), cat: CARRY_CAT }])];
     state.periodStart = now;
     // the wage that actually came in becomes the income from now on
-    const main = parseEuro($("resetMain").value), mini = parseEuro($("resetMini").value);
     if (!Number.isNaN(main) && main >= 0) state.mainIncome = main;
     if (!Number.isNaN(mini) && mini >= 0) state.minijob = mini;
-    editingSpend = null;
-    showReset(false);
+    return carried;
+  }
+  // fixed payday: start the new month by itself once the day has come (one month at a time, undo possible)
+  let autoUndo = null;
+  function autoWage() {
+    if (!user || !loaded || !state.autoPay || !state.payday || !state.periodStart || !state.mainIncome && !state.minijob) return;
+    const begun = new Date(state.periodStart), from = new Date(begun); from.setDate(from.getDate() + 1);
+    const pay = nextPayday(state.payday, from).date; pay.setHours(0, 0, 0, 0);
+    const iso = isoDay(pay);
+    // not yet, undone for this payday, or the wage was already booked by hand a few days early
+    if (pay > new Date() || state.autoSkip === iso || pay - begun < 7 * 86400000) return;
+    autoUndo = { before: JSON.stringify(state), iso };
+    const carried = startPeriod(pay.toISOString(), true, NaN, NaN);
     scheduleSave();
+    toast(`<p>💶 <b>Dein Lohn ist da!</b> Der neue Monat ist automatisch gestartet (${fmtDate(iso)}).</p>`
+      + (carried ? `<p>${carried > 0 ? `Übrig vom letzten Lohn: <b>${fmt(carried)}</b> mitgenommen.` : `Minus aus dem Vormonat: <b>${fmt(-carried)}</b> mitgenommen.`}</p>` : "")
+      + `<button class="linklike" type="button" id="autoUndo">Rückgängig</button>`, "ok", 12000);
+  }
+  $("toast").addEventListener("click", e => {
+    if (!e.target.closest("#autoUndo") || !autoUndo) return;
+    state = normalize(JSON.parse(autoUndo.before)); state.autoSkip = autoUndo.iso; autoUndo = null;
+    $("toast").hidden = true; scheduleSave();
+    toast(`<p>Zurückgesetzt. Tipp auf „Neuer Lohn ist da“, wenn der Lohn wirklich da ist.</p>`, "ok");
   });
 
   // --- events: correct the available amount ---
