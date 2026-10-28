@@ -2187,7 +2187,6 @@ body.is-locked .wrap { visibility: hidden; }
   document.addEventListener("touchmove", e => { if (e.scale !== undefined && e.scale !== 1) e.preventDefault(); }, { passive: false });
 
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
-  const TAB_KEY = "fixkosten-tab";
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
   const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri"];
   function showTab(name, keepScroll) {
@@ -2195,14 +2194,17 @@ body.is-locked .wrap { visibility: hidden; }
     const bar = SUB_PAGES.includes(name) ? "more" : name;
     document.querySelectorAll("#tabbar [data-go]").forEach(b => b.dataset.go === bar ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
     $("backBtn").hidden = bar !== "more" || name === "more";
-    try { localStorage.setItem(TAB_KEY, name); } catch {}
     if (!keepScroll) scrollTo(0, 0);
   }
   document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) showTab(b.dataset.go); });
   $("chips").addEventListener("click", e => { if (e.target.closest(".chip")) e.preventDefault(); });
-  let startTab = "home";
-  try { const saved = localStorage.getItem(TAB_KEY); if (saved === "more" || document.querySelector(`[data-tab="${saved}"]`)) startTab = saved; } catch {}
-  showTab(startTab, true);
+  // opening the app always starts on the overview, also when it comes back after a while in the background
+  showTab("home", true);
+  let leftAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) leftAt = Date.now();
+    else if (leftAt && Date.now() - leftAt > 60000) showTab("home");
+  });
 
   const showSpendForm = on => { $("spendForm").hidden = !on; $("entryQuick").hidden = on; };
   document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => {
