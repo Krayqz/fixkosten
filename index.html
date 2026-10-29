@@ -1015,7 +1015,7 @@ body.is-locked .wrap { visibility: hidden; }
   function periodWindow() {
     const start = state.periodStart ? new Date(state.periodStart) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     start.setHours(0, 0, 0, 0);
-    const end = state.payday ? nextPayday(state.payday).date : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
+    const end = state.payday ? upcomingPay().date : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
     end.setHours(0, 0, 0, 0);
     return { start, end: end > start ? end : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate()) };
   }
@@ -1053,10 +1053,12 @@ body.is-locked .wrap { visibility: hidden; }
     return `var(${EXTRA_COLORS[custom.indexOf(cat) % EXTRA_COLORS.length]})`;
   }
 
-  // reserved money counts now only up to the next wage and only within this calendar month
-  // (something reserved for November shows up in "Nächster Monat", not under the ring in October)
+  // reserved money counts now only up to the next wage and only within the month this wage is for
+  // (something reserved for November shows up in "Nächster Monat", not under the ring in October).
+  // The wage is for the month most of its period falls into: a wage on 29 October is already November's money.
   function resCut(ahead = 0, end = periodWindow().end) {
-    const now = new Date(), month = new Date(now.getFullYear(), now.getMonth() + 1 + ahead, 1);
+    const w = periodWindow(), mid = new Date((w.start.getTime() + w.end.getTime()) / 2), now = new Date();
+    const base = mid > now ? mid : now, month = new Date(base.getFullYear(), base.getMonth() + 1 + ahead, 1);
     return isoDay(month < end ? month : end);
   }
   // wage plus side job plus other fixed income such as Kindergeld
@@ -1079,6 +1081,18 @@ body.is-locked .wrap { visibility: hidden; }
     let next = at(now.getFullYear(), now.getMonth());
     if (next <= now) next = at(now.getFullYear(), now.getMonth() + 1);
     return { date: next, days: Math.round((next - now) / 86400000) };
+  }
+  // a wage that came up to a week early (e.g. 29 October for the 1st) already is that payday's wage,
+  // so the wage after it is the next one (1 December)
+  function earliestNextPay() {
+    if (!state.periodStart) return undefined;
+    const d = new Date(state.periodStart); d.setDate(d.getDate() + 7); return d;
+  }
+  function upcomingPay() {
+    const early = earliestNextPay(), now = new Date();
+    const p = nextPayday(state.payday, early && early > now ? early : undefined);
+    now.setHours(12, 0, 0, 0);
+    return { date: p.date, days: Math.round((p.date - now) / 86400000) };
   }
 
   // --- render ---
@@ -1131,7 +1145,7 @@ body.is-locked .wrap { visibility: hidden; }
     if (!t.income) {
       $("perDay").textContent = "Trag unten dein Einkommen ein, dann rechnet die Seite los.";
     } else if (state.payday) {
-      const p = nextPayday(state.payday);
+      const p = upcomingPay();
       const days = `${p.days} ${p.days === 1 ? "Tag" : "Tage"}`;
       $("perDay").innerHTML = t.avail < 0
         ? `<span class="minus">Du bist <b>${fmt(-t.avail)}</b> im Minus.</span> Noch ${days} bis zum Lohn am ${fmtDate(isoDay(p.date))}`
@@ -1182,7 +1196,7 @@ body.is-locked .wrap { visibility: hidden; }
 
   function dayBudget(t) {
     if (!state.payday || !t.income) return null;
-    const p = nextPayday(state.payday);
+    const p = upcomingPay();
     const spentToday = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) === today()), e => e.amount);
     const budget = Math.max(t.avail + spentToday, 0) / Math.max(p.days, 1);
     return { budget, left: budget - spentToday, spentToday };
@@ -1195,7 +1209,7 @@ body.is-locked .wrap { visibility: hidden; }
     const daysGone = Math.max(1, Math.ceil((now - w.start) / 86400000));
     if (daysGone < 3) return { early: true };
     const spent = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) >= start && payDay(e) <= today()), e => e.amount);
-    const perDay = spent / daysGone, days = nextPayday(state.payday).days;
+    const perDay = spent / daysGone, days = upcomingPay().days;
     return { perDay, days, left: t.avail - perDay * days };
   }
 
@@ -1306,7 +1320,7 @@ body.is-locked .wrap { visibility: hidden; }
     const row = (label, a, b) => `<div class="wif-row"><span>${label}</span><span class="num">${fmt(a)}</span><span class="arrow" aria-hidden="true">→</span><span class="num ${b < 0 ? "minus" : ""}">${fmt(b)}</span></div>`;
     if (!t.income) { $("wifResult").innerHTML = `<p class="hint">Trag zuerst dein Einkommen ein.</p>`; return; }
     if (Number.isNaN(x) || x <= 0) { $("wifResult").innerHTML = `<p class="hint">Gib oben einen Betrag ein, dann siehst du hier, was sich ändert.</p>`; return; }
-    const days = state.payday ? Math.max(nextPayday(state.payday).days, 1) : 0, n = nextPeriod(t);
+    const days = state.payday ? Math.max(upcomingPay().days, 1) : 0, n = nextPeriod(t);
     let html = `<div class="lock-head"><strong>Vorher → nachher</strong></div>`;
     if (wifKind === "once") {
       html += row("Noch verfügbar", t.avail, t.avail - x)
@@ -1423,8 +1437,7 @@ body.is-locked .wrap { visibility: hidden; }
   // small cards on the overview: wage day reached, open debts
   function payReached() {
     if (!state.payday || !state.periodStart) return false;
-    const start = new Date(state.periodStart); start.setDate(start.getDate() + 1);
-    return nextPayday(state.payday, start).date <= new Date();
+    return nextPayday(state.payday, earliestNextPay()).date <= new Date();
   }
   function renderHomeCards(t) {
     const owed = sum(state.debts.filter(x => x.dir === "owed"), x => x.amount), owe = sum(state.debts.filter(x => x.dir === "owe"), x => x.amount);
@@ -2130,7 +2143,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“. Am Tag der Abbuchung fragt dich die App, ob sie abgebucht wurde, und zieht sie dann ab.", "spaeter"],
     ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung oder eines vorgemerkten Kaufs da, fragt dich die App beim Öffnen, ob es abgebucht bzw. gekauft wurde. Erst bei „Ja“ wird es vom Verfügbaren abgezogen. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal.", "nachfrage"],
     ["🔢", "In Raten bezahlen", "entries", "raten ratenzahlung klarna abzahlen", "Bei „später bezahlen“ kannst du „In 2 Raten“, „In 3 Raten“ usw. wählen. Jede Rate wird in ihrem eigenen Monat abgezogen.", "raten"],
-    ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe.", "vormerken"],
+    ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Unter dem Kreis zählt nur, was im Monat deines Lohns ansteht, der Rest steht bei „Nächster Monat“. Kommt dein Lohn ein paar Tage vor dem 1. (z. B. am 29. Oktober), gilt er schon für den neuen Monat, und alles für November steht direkt unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe.", "vormerken"],
     ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“.", "kategorien"],
     ["💶", "Neuer Lohn ist da", "entries", "lohn gehalt neuer monat zeitraum übertrag minus mitnehmen", "Wenn dein Lohn kommt, unten bei „Einträge“ auf „Neuer Lohn ist da“ tippen. Dort bestätigst oder änderst du den Lohn (Hauptjob und Minijob) und nimmst übriges Geld oder ein Minus mit. Die alten Einträge landen im Verlauf.", "lohn"],
     ["🔄", "Lohn automatisch starten", "income", "automatisch lohn fix pünktlich gleicher tag neuer monat umschalten", "Unter „Mehr“ → „Lohn & Einkommen“ wählst du, ob dein Lohn immer am gleichen Tag kommt. Bei „Ja, immer fix“ startet die App am Lohntag den neuen Monat von selbst und nimmt übriges Geld oder ein Minus mit (mit „Rückgängig“). Bei „Nein, unterschiedlich“ tippst du wie bisher selbst auf „Neuer Lohn ist da“.", "autolohn"],
@@ -2360,11 +2373,11 @@ body.is-locked .wrap { visibility: hidden; }
   let autoUndo = null;
   function autoWage() {
     if (!user || !loaded || !state.autoPay || !state.payday || !state.periodStart || !incomeSum()) return;
-    const begun = new Date(state.periodStart), from = new Date(begun); from.setDate(from.getDate() + 1);
-    const pay = nextPayday(state.payday, from).date; pay.setHours(0, 0, 0, 0);
+    // a wage booked by hand up to a week early already counts for that payday
+    const pay = nextPayday(state.payday, earliestNextPay()).date; pay.setHours(0, 0, 0, 0);
     const iso = isoDay(pay);
-    // not yet, undone for this payday, or the wage was already booked by hand a few days early
-    if (pay > new Date() || state.autoSkip === iso || pay - begun < 7 * 86400000) return;
+    // not yet, or undone for this payday
+    if (pay > new Date() || state.autoSkip === iso) return;
     autoUndo = { before: JSON.stringify(state), iso };
     const carried = startPeriod(pay.toISOString(), true, NaN, NaN);
     scheduleSave();
