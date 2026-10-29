@@ -36,7 +36,7 @@ body { margin: 0; }
   --bad: #ff6b5e;
   --spent: #ff9f43;
   --ring-base: #2e3a35;
-  --c1: #4da3ff; --c2: #3ddc84; --c3: #ffb35c; --c4: #c084fc; --c5: #ff6b5e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #e2c84a;
+  --c1: #4da3ff; --c2: #3ddc84; --c3: #ffb35c; --c4: #c084fc; --c5: #ff6b5e; --c6: #4cc3d3; --c7: #a3acb6; --c8: #e2c84a; --c9: #f472b6;
   --display: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
   --body: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
   --mono: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
@@ -435,6 +435,7 @@ th, td { border-bottom-color: var(--line); }
 .nm-open { color: var(--muted); font-size: 1.4rem; transition: transform .2s; }
 .nm-card[open] .nm-open { transform: rotate(90deg); }
 .item.is-paused > .num { opacity: .45; text-decoration: line-through; }
+.item.is-later > .num { opacity: .45; }
 .paused-tag { color: var(--accent); }
 .paused-tag .linklike { font-size: inherit; margin-left: 6px; }
 .pause-chip { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .82rem; cursor: pointer; }
@@ -460,6 +461,27 @@ th, td { border-bottom-color: var(--line); }
 .week-row b { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
 .week-row b.minus { color: var(--bad); }
 .pw-form { display: grid; gap: 10px; }
+.loan-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.loan-sum > div { background: var(--surface); border-radius: 16px; padding: 12px 14px; }
+.loan-sum small { color: var(--muted); font-size: .78rem; display: block; }
+.loan-sum b { font-size: 1.15rem; }
+.loan { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; margin-top: 10px; }
+.loan-top { display: flex; justify-content: space-between; gap: 10px; }
+.loan-top b { font-size: 1rem; overflow-wrap: anywhere; }
+.loan-top small { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+.loan-top .num { font-weight: 700; text-align: right; white-space: nowrap; }
+.loan-meta { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); }
+.loan-meta b { color: var(--ink); }
+.loan-free { font-size: .86rem; }
+.loan-free b { color: var(--good); }
+.loan-acts { display: flex; gap: 14px; }
+.loan-acts .linklike { font-size: .82rem; }
+.calc-box { margin-top: 14px; display: grid; gap: 12px; }
+.calc-res { display: grid; gap: 6px; }
+#loanChips { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+#loanChips .pause-chip { padding: 6px 0; }
+#loanChips .pause-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.calc-res:empty { display: none; }
 .pw-form .btn { justify-self: start; }
 .nm-body { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
 .nm-row { display: flex; justify-content: space-between; gap: 10px; }
@@ -713,6 +735,7 @@ body.is-locked .wrap { visibility: hidden; }
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="bank"><span class="m-ico" aria-hidden="true">🏦</span><span>Kontostand-Abgleich<small id="menuBank">Prüfen, ob dein Konto zur App passt</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="loans"><span class="m-ico" aria-hidden="true">💳</span><span>Kredite &amp; Finanzierungen<small id="menuLoans">Kreditrechner, Raten und wann du schuldenfrei bist</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="whatif"><span class="m-ico" aria-hidden="true">🤔</span><span>Was wäre wenn?<small>Neuen Vertrag oder große Ausgabe vorher durchrechnen</small></span><b aria-hidden="true">›</b></button>
       </div>
       <span class="menu-h">Einstellungen</span>
@@ -786,6 +809,38 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="field"><label for="wifAmount" id="wifLabel">Wie viel kostet es?</label><div class="money big"><input id="wifAmount" inputmode="decimal" placeholder="0,00" autocomplete="off"><span>€</span></div></div>
       </div>
       <div class="box" id="wifResult"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="loanH" data-tab="loans">
+      <h2 id="loanH">Kredite &amp; Finanzierungen</h2>
+      <p class="hint">Jede Rate steht automatisch bei deinen Fixkosten (Kategorie „Kredite“) und wird jeden Monat abgezogen. Nach der letzten Rate hört das von selbst auf.</p>
+      <div id="loanList"></div>
+      <form class="box calc-box" id="loanForm" autocomplete="off" novalidate>
+        <div class="lock-head"><strong id="loanFormH">🧮 Kreditrechner</strong><span class="label" id="loanFormL">probier aus</span></div>
+        <div class="fields">
+          <div class="field"><label for="loanAmount">Wie viel aufnehmen?</label><div class="money"><input id="loanAmount" inputmode="decimal" placeholder="0,00"><span>€</span></div></div>
+          <div class="field"><label for="loanPct">Zinssatz (effektiv)</label><div class="money"><input id="loanPct" inputmode="decimal" placeholder="0,0"><span>%</span></div></div>
+          <div class="field wide">
+            <span class="flabel" id="loanByL">Was weißt du?</span>
+            <div class="seg" role="radiogroup" aria-labelledby="loanByL">
+              <button type="button" class="seg-btn" role="radio" data-loan-by="months" aria-checked="true">Laufzeit</button>
+              <button type="button" class="seg-btn" role="radio" data-loan-by="rate" aria-checked="false">Monatsrate</button>
+            </div>
+          </div>
+          <div class="field wide" id="loanMonthsF"><label for="loanMonths">Laufzeit in Monaten</label>
+            <div class="pause-quick" id="loanChips"><button type="button" class="pause-chip" data-months="12">12</button><button type="button" class="pause-chip" data-months="24">24</button><button type="button" class="pause-chip" data-months="36">36</button><button type="button" class="pause-chip" data-months="48">48</button><button type="button" class="pause-chip" data-months="60">60</button><button type="button" class="pause-chip" data-months="72">72</button><button type="button" class="pause-chip" data-months="84">84</button></div>
+            <input type="number" id="loanMonths" inputmode="numeric" min="1" max="600" placeholder="z. B. 48"></div>
+          <div class="field wide" id="loanRateF" hidden><label for="loanRate">Monatsrate, die du zahlen kannst</label><div class="money"><input id="loanRate" inputmode="decimal" placeholder="0,00"><span>€</span></div></div>
+        </div>
+        <div class="calc-res" id="loanRes"></div>
+        <div class="fields">
+          <div class="field"><label for="loanName">Wofür?</label><input type="text" id="loanName" placeholder="z. B. Autokredit" maxlength="40"></div>
+          <div class="field"><label for="loanFirst">Erste Rate am</label><input type="date" id="loanFirst"></div>
+        </div>
+        <span class="hint">Läuft der Kredit schon? Dann trag den Betrag vom Anfang und das Datum der allerersten Rate ein. Die App rechnet aus, was noch offen ist.</span>
+        <div class="row-btns"><button class="btn" type="submit" id="loanSave">Als Kredit speichern</button><button class="btn ghost" type="button" id="loanCancel" hidden>Abbrechen</button></div>
+        <p class="auth-msg err" id="loanMsg" role="status"></p>
+      </form>
     </section>
 
     <section class="panel" aria-labelledby="debtH" data-tab="debts">
@@ -1011,8 +1066,8 @@ body.is-locked .wrap { visibility: hidden; }
 <script src="config.js"></script>
 <script>
 (() => {
-  const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Sonstiges: "--c7" };
-  const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Abos: "📺", Freizeit: "🎉", Sonstiges: "📦" };
+  const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Kredite: "--c9", Sonstiges: "--c7" };
+  const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Abos: "📺", Freizeit: "🎉", Kredite: "💳", Sonstiges: "📦" };
   const DEFAULT_CATS = Object.keys(CAT_COLORS);
   // everyday spending categories; "Korrektur" and "Übertrag" are set by the page itself
   const SPEND_CATS = { Essen: ["🍔", "--c3"], Einkaufen: ["🛒", "--c1"], Tanken: ["⛽", "--c5"], Freizeit: ["🎉", "--c4"], Kleidung: ["👕", "--c6"], Sonstiges: ["📦", "--c7"], Korrektur: ["✏️", "--c8"], "Übertrag": ["↩️", "--c7"] };
@@ -1036,7 +1091,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null, extraIn: [], planIn: [] });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null, extraIn: [], planIn: [], loans: [] });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -1057,7 +1112,7 @@ body.is-locked .wrap { visibility: hidden; }
   // a paused item (e.g. gym on hold) costs nothing until the day it is paused to
   const pausedAt = (it, at) => !!it.pausedUntil && isoDay(at ? new Date(at) : new Date()) < it.pausedUntil;
   const monthlyRaw = it => it.amount / (it.every || 1);
-  const monthly = it => pausedAt(it) ? 0 : monthlyRaw(it);
+  const monthly = it => pausedAt(it) || !loanRuns(it) ? 0 : monthlyRaw(it);
   // next debit on or after a day (default today), stepping from the date the person entered
   function nextDue(it, from) {
     if (!it.due) return null;
@@ -1173,6 +1228,7 @@ body.is-locked .wrap { visibility: hidden; }
     renderHomeCards(t);
     renderReserved();
     renderPlanIn();
+    renderLoans(t);
     renderPrices();
     renderCatManage();
     renderBank(t);
@@ -1351,7 +1407,7 @@ body.is-locked .wrap { visibility: hidden; }
     const end = state.payday ? (() => { const d = new Date(start); d.setDate(d.getDate() + 1); return nextPayday(state.payday, d).date; })()
       : new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
     end.setHours(0, 0, 0, 0);
-    const costs = sum(state.items, it => isFull(it) ? ((d => d && d < end ? it.amount : 0)(nextDue(it, start))) : pausedAt(it, start) ? 0 : monthlyRaw(it));
+    const costs = sum(state.items, it => isFull(it) ? ((d => d && d < end ? it.amount : 0)(nextDue(it, start))) : pausedAt(it, start) || !loanRuns(it, start, end) ? 0 : monthlyRaw(it));
     const iso = d => isoDay(d);
     const plannedList = state.expenses.filter(e => isLater(e) && e.payOn >= iso(start) && e.payOn < iso(end));
     const planned = sum(plannedList, e => e.amount);
@@ -1449,6 +1505,79 @@ body.is-locked .wrap { visibility: hidden; }
         + `<p class="hint">Im Jahr kostet dich das ${fmt(x * 12)}.</p>`;
     }
     $("wifResult").innerHTML = html;
+  }
+
+  // --- loans: paid back in equal monthly rates; each one is a fixed cost in the category "Kredite" ---
+  const LOAN_CAT = "Kredite";
+  function loanRate(K, pct, n) { const r = pct / 1200; return !n ? 0 : r ? K * r / (1 - Math.pow(1 + r, -n)) : K / n; }
+  // months needed with a given rate (Infinity if the rate does not even cover the interest)
+  function loanMonths(K, pct, rate) {
+    const r = pct / 1200;
+    if (rate <= 0) return Infinity;
+    if (!r) return Math.ceil(K / rate - 1e-9);
+    return rate <= K * r ? Infinity : Math.ceil(-Math.log(1 - K * r / rate) / Math.log(1 + r) - 1e-9);
+  }
+  // still owed after k rates
+  function loanLeft(l, k) { const r = l.pct / 1200, f = Math.pow(1 + r, k); return Math.max(0, r ? l.amount * f - l.monthly * (f - 1) / r : l.amount - l.monthly * k); }
+  const rateOn = (l, k) => addMonths(l.first, k);
+  function loanInfo(l) {
+    const t = today(); let paid = 0;
+    while (paid < l.months && rateOn(l, paid) <= t) paid++;
+    return { paid, left: paid >= l.months ? 0 : loanLeft(l, paid), last: rateOn(l, l.months - 1), done: paid >= l.months };
+  }
+  const loanOf = it => it.loan ? state.loans.find(l => l.id === it.loan) || null : null;
+  // a loan's rate is a fixed cost only in the wage periods from its first to its last rate
+  function loanRuns(it, from, to) {
+    const l = loanOf(it); if (!l) return true;
+    if (!from) ({ start: from, end: to } = periodWindow());
+    return rateOn(l, l.months - 1) >= isoDay(from) && l.first < isoDay(to);
+  }
+  const monthName = iso => new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  const pctText = v => v.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+  let loanBy = "months", editingLoan = null;
+  function renderLoans(t) {
+    const list = state.loans.map(l => ({ l, i: loanInfo(l) })).sort((a, b) => a.i.done - b.i.done);
+    const open = list.filter(x => !x.i.done), owed = sum(open, x => x.i.left);
+    $("menuLoans").textContent = list.length ? `${list.length === 1 ? "1 Kredit" : list.length + " Kredite"} · ${fmt(owed)} noch offen` : "Kreditrechner, Raten und wann du schuldenfrei bist";
+    $("loanList").innerHTML = !list.length ? "" : `<div class="loan-sum"><div><small>Insgesamt noch offen</small><b class="num">${fmt(owed)}</b></div><div><small>Raten pro Monat</small><b class="num">${fmt(sum(open, x => x.l.monthly))}</b></div></div>`
+      + list.map(({ l, i }) => `<div class="loan"><div class="loan-top"><div><b>💳 ${esc(l.name)}</b><small>${fmt(l.amount)} · ${pctText(l.pct)} % Zinsen · ${l.months} Monate</small></div><span class="num">${fmt(l.monthly)}<small>pro Monat</small></span></div>
+        <div class="meter" role="img" aria-label="${Math.round((1 - i.left / (l.amount || 1)) * 100)} % abbezahlt"><span style="width:${Math.min(100, Math.round((1 - i.left / (l.amount || 1)) * 100))}%"></span></div>
+        <div class="loan-meta"><span>Noch offen <b class="num">${fmt(i.left)}</b></span><span>${i.done ? "alle Raten bezahlt" : `${l.months - i.paid} von ${l.months} Raten übrig`}</span></div>
+        <div class="loan-free">${i.done ? "🎉 <b>Abbezahlt!</b> Du kannst ihn jetzt löschen." : i.paid ? `🎉 Schuldenfrei im <b>${monthName(i.last)}</b>` : `Erste Rate am ${fmtDate(l.first, true)}, schuldenfrei im <b>${monthName(i.last)}</b>`}</div>
+        <div class="loan-acts">${i.done ? "" : `<button class="linklike" type="button" data-loan-edit="${l.id}">Ändern</button>`}<button class="linklike" type="button" data-loan-del="${l.id}">Löschen</button></div></div>`).join("");
+    renderLoanCalc(t);
+  }
+  // what the calculator fields describe: amount, interest and either the months or the rate one can pay
+  function loanInput() {
+    const K = parseEuro($("loanAmount").value), pct = $("loanPct").value.trim() ? parseEuro($("loanPct").value) : 0;
+    if (Number.isNaN(K) || K <= 0 || Number.isNaN(pct) || pct < 0 || pct > 100) return null;
+    let months;
+    if (loanBy === "months") {
+      months = Math.round(Number($("loanMonths").value));
+      if (!(months >= 1 && months <= 600)) return { K, pct };
+    } else {
+      const rate = parseEuro($("loanRate").value);
+      if (Number.isNaN(rate) || rate <= 0) return { K, pct };
+      months = loanMonths(K, pct, rate);
+      if (!Number.isFinite(months) || months > 600) return { K, pct, tooLow: true };
+    }
+    const monthly = round2(loanRate(K, pct, months));
+    return { K, pct, months, monthly, total: monthly * months, interest: Math.max(0, monthly * months - K) };
+  }
+  const nextFirst = () => { const d = new Date(); return isoDay(new Date(d.getFullYear(), d.getMonth() + 1, 1)); };
+  function renderLoanCalc(t) {
+    document.querySelectorAll("#loanChips [data-months]").forEach(b => b.setAttribute("aria-pressed", String(loanBy === "months" && b.dataset.months === $("loanMonths").value)));
+    const x = loanInput();
+    if (!x || !x.months) { $("loanRes").innerHTML = x?.tooLow ? `<p class="hint minus">Mit dieser Rate werden nicht einmal die Zinsen bezahlt. Nimm eine höhere Rate.</p>` : ""; return; }
+    // when changing a loan, its old rate is not counted twice
+    const old = editingLoan ? state.items.filter(i => i.loan === editingLoan) : [];
+    const after = t.rest + sum(old, costNow) - x.monthly;
+    const first = /^\d{4}-\d{2}-\d{2}$/.test($("loanFirst").value) ? $("loanFirst").value : nextFirst();
+    $("loanRes").innerHTML = `<div class="nm-row"><span>Rate pro Monat</span><b class="num">${fmt(x.monthly)}</b></div>`
+      + (loanBy === "rate" ? `<div class="nm-row"><span>Laufzeit</span><span class="num">${x.months} Monate</span></div>` : "")
+      + `<div class="nm-row"><span>Zinsen insgesamt</span><span class="num ${x.interest > 0.005 ? "minus" : ""}">${fmt(x.interest)}</span></div>`
+      + `<div class="nm-row sum"><span>Du zahlst insgesamt</span><span class="num">${fmt(x.total)}</span></div>`
+      + `<p class="hint">Schuldenfrei im <b>${monthName(addMonths(first, x.months - 1))}</b>. ${!t.income ? "" : after >= 0 ? `Mit dieser Rate bleiben dir jeden Monat noch <b class="plus">${fmt(after)}</b> nach allen Fixkosten.` : `<b class="minus">Achtung:</b> Mit dieser Rate fehlen dir jeden Monat ${fmt(-after)} nach allen Fixkosten.`}</p>`;
   }
 
   // --- money set aside for something that is still to come ---
@@ -1845,10 +1974,12 @@ body.is-locked .wrap { visibility: hidden; }
     const when = (due ? `<div class="meta num">Nächste Abbuchung: ${fmtDate(isoDay(due))}</div>` : "")
       + (it.prev ? `<div class="meta num ${it.amount > it.prev.amount ? "warn-text" : "plus"}">Vorher ${fmt(it.prev.amount)}, seit ${fmtDate(it.prev.date)} ${it.amount > it.prev.amount ? "teurer" : "günstiger"} (${it.amount > it.prev.amount ? "+" : "−"}${fmt(Math.abs(it.amount - it.prev.amount))})</div>` : "")
       + (pausedAt(it) ? `<div class="meta num paused-tag">⏸ Pausiert bis ${fmtDate(it.pausedUntil, true)} <button class="linklike" type="button" data-unpause="${it.id}">Pause beenden</button></div>` : "")
+      + ((l, i) => !l ? "" : `<div class="meta num plus">💳 ${i.done ? "Kredit abbezahlt" : i.paid ? `Kredit · noch ${l.months - i.paid} ${l.months - i.paid === 1 ? "Rate" : "Raten"}, schuldenfrei ${i.last.slice(5, 7)}/${i.last.slice(0, 4)}` : `Kredit · erste Rate am ${fmtDate(l.first, true)}${loanRuns(it) ? "" : ", zählt ab dem Monat"}`}</div>`)(loanOf(it), loanOf(it) && loanInfo(loanOf(it)))
       + (it.ends ? `<div class="meta num${endingSoon(it) ? " warn-text" : ""}">${it.ends < today() ? "Ausgelaufen am" : "Läuft aus am"} ${fmtDate(it.ends, true)}</div>` : "");
     const missing = it.mode === "full" && it.every > 1 && !it.due ? `<div class="meta warn-text">Für „ganz im Abbuchungsmonat“ fehlt das Datum. Bis dahin wird anteilig gerechnet.</div>` : "";
-    return `<div class="item${pausedAt(it) ? " is-paused" : ""}"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
-      <span class="num">${fmt(pausedAt(it) ? monthlyRaw(it) : costNow(it))}</span>
+    const resting = pausedAt(it) || !loanRuns(it);
+    return `<div class="item${pausedAt(it) ? " is-paused" : resting ? " is-later" : ""}"><div class="name">${esc(it.name)}${pill}${per}${when}${missing}</div>
+      <span class="num">${fmt(resting ? monthlyRaw(it) : costNow(it))}</span>
       <span class="actions"><button class="icon" type="button" data-edit="${it.id}" aria-label="${esc(it.name)} ändern">✎</button><button class="icon" type="button" data-del="${it.id}" aria-label="${esc(it.name)} löschen">✕</button></span></div>`;
   }
   function costEditor(it) {
@@ -1904,8 +2035,11 @@ body.is-locked .wrap { visibility: hidden; }
       amount: Number(i.amount) || 0, every: clampEvery(i.every ?? OLD_INTERVALS[i.interval] ?? 1), mode: i.mode === "full" ? "full" : "spread",
       due: /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null, ends: /^\d{4}-\d{2}-\d{2}$/.test(i.ends) ? i.ends : null,
       pausedUntil: /^\d{4}-\d{2}-\d{2}$/.test(i.pausedUntil) ? i.pausedUntil : null,
-      prev: i.prev && Number.isFinite(Number(i.prev.amount)) ? { amount: Number(i.prev.amount), date: String(i.prev.date || "") } : null
+      prev: i.prev && Number.isFinite(Number(i.prev.amount)) ? { amount: Number(i.prev.amount), date: String(i.prev.date || "") } : null,
+      loan: i.loan ? String(i.loan) : null
     })) : [];
+    s.loans = Array.isArray(d.loans) ? d.loans.filter(l => l && l.name && /^\d{4}-\d{2}-\d{2}$/.test(l.first) && Number(l.months) >= 1).map(l => ({ id: String(l.id || uid()), name: String(l.name),
+      amount: Number(l.amount) || 0, pct: Number(l.pct) || 0, months: Math.min(600, Math.round(Number(l.months))), monthly: Number(l.monthly) || 0, first: l.first })) : [];
     s.expenses = Array.isArray(d.expenses) ? d.expenses.filter(e => e && e.name).map(e => ({
       id: String(e.id || uid()), kind: e.kind === "in" ? "in" : "out", name: String(e.name), amount: Number(e.amount) || 0,
       date: /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : today(),
@@ -2132,6 +2266,61 @@ body.is-locked .wrap { visibility: hidden; }
     $("spendAmount").focus({ preventScroll: true });
   }));
 
+  // --- events: loans ---
+  function setLoanBy(by) {
+    loanBy = by;
+    document.querySelectorAll("[data-loan-by]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.loanBy === by)));
+    $("loanMonthsF").hidden = by !== "months"; $("loanRateF").hidden = by !== "rate";
+    renderLoanCalc(totals());
+  }
+  function resetLoanForm() {
+    editingLoan = null;
+    ["loanAmount", "loanPct", "loanMonths", "loanRate", "loanName"].forEach(id => { $(id).value = ""; });
+    $("loanFirst").value = nextFirst(); $("loanMsg").textContent = "";
+    $("loanFormH").textContent = "🧮 Kreditrechner"; $("loanFormL").textContent = "probier aus";
+    $("loanSave").textContent = "Als Kredit speichern"; $("loanCancel").hidden = true;
+    setLoanBy("months");
+  }
+  function editLoan(id) {
+    const l = state.loans.find(x => x.id === id); if (!l) return;
+    resetLoanForm(); editingLoan = id;
+    $("loanAmount").value = toField(l.amount); $("loanPct").value = l.pct ? pctText(l.pct) : ""; $("loanMonths").value = l.months;
+    $("loanName").value = l.name; $("loanFirst").value = l.first;
+    $("loanFormH").textContent = "✏️ Kredit ändern"; $("loanFormL").textContent = l.name;
+    $("loanSave").textContent = "Änderung speichern"; $("loanCancel").hidden = false;
+    renderLoanCalc(totals());
+    $("loanForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  resetLoanForm();
+  document.querySelectorAll("[data-loan-by]").forEach(b => b.addEventListener("click", () => setLoanBy(b.dataset.loanBy)));
+  ["loanAmount", "loanPct", "loanMonths", "loanRate", "loanFirst"].forEach(id => $(id).addEventListener("input", () => renderLoanCalc(totals())));
+  $("loanChips").addEventListener("click", e => { const b = e.target.closest("[data-months]"); if (!b) return; $("loanMonths").value = b.dataset.months; renderLoanCalc(totals()); });
+  $("loanCancel").addEventListener("click", resetLoanForm);
+  $("loanList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.loanEdit) editLoan(b.dataset.loanEdit);
+    else if (b.dataset.loanDel) {
+      const l = state.loans.find(x => x.id === b.dataset.loanDel); if (!l) return;
+      if (editingLoan === l.id) resetLoanForm();
+      deleted(l.name, () => { state.loans = state.loans.filter(x => x !== l); state.items = state.items.filter(i => i.loan !== l.id); });
+    }
+  });
+  $("loanForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const x = loanInput(), name = $("loanName").value.trim(), first = $("loanFirst").value, msg = text => { $("loanMsg").textContent = text; };
+    if (!x || !x.months) { msg(x?.tooLow ? "Mit dieser Rate werden nicht einmal die Zinsen bezahlt." : `Trag zuerst ein, wie viel du aufnimmst und ${loanBy === "months" ? "wie viele Monate" : "welche Monatsrate"}.`); return; }
+    if (!name) { msg("Gib noch ein, wofür der Kredit ist."); $("loanName").focus(); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(first)) { msg("Wähl, wann die erste Rate abgebucht wird."); $("loanFirst").focus(); return; }
+    const data = { name, amount: round2(x.K), pct: x.pct, months: x.months, monthly: x.monthly, first };
+    let l = editingLoan && state.loans.find(i => i.id === editingLoan);
+    if (l) Object.assign(l, data); else { l = { id: uid(), ...data }; state.loans.push(l); }
+    let it = state.items.find(i => i.loan === l.id);
+    if (!it) { it = { id: uid(), category: LOAN_CAT, every: 1, mode: "spread", due: null, ends: null, pausedUntil: null, prev: null, loan: l.id }; state.items.push(it); }
+    Object.assign(it, { name: l.name, amount: l.monthly });
+    toast(`<p>„${esc(l.name)}“ ist gespeichert. Die Rate von ${fmt(l.monthly)} steht jetzt bei deinen Fixkosten.</p>`, "ok");
+    resetLoanForm(); scheduleSave();
+  });
+
   // --- events: bank balance check ---
   $("bankForm").addEventListener("submit", e => {
     e.preventDefault();
@@ -2337,6 +2526,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["📜", "Verlauf und Verlauf leeren", "stats", "alte monate history löschen", "Im Verlauf (in der Auswertung) siehst du deine alten Monate. Mit „Verlauf leeren“ löschst du ihn."],
     ["🤝", "Geld verliehen & geliehen", "debts", "schulden leihen schuldet zurückzahlen", "Unter „Mehr“ trägst du ein, wem du Geld geliehen hast oder wem du etwas schuldest. Ist es zurückgezahlt, tipp auf ✓. Auf Wunsch wird es gleich als Ein- oder Ausgabe eingetragen.", "schulden"],
     ["🏦", "Kontostand-Abgleich", "bank", "konto bank girokonto stimmt minus dispo", "Trag deinen Kontostand aus der Banking-App ein. Mit dem Schalter wählst du „Im Plus“ oder „Im Minus“. Die App zeigt, was drauf sein sollte, und kann den Unterschied für dich eintragen.", "kontostand"],
+    ["💳", "Kredite & Kreditrechner", "loans", "kredit kredite finanzierung darlehen raten zinsen zinssatz schulden schuldenfrei laufzeit abbezahlen rechner auto", "Unter „Mehr“ → „Kredite & Finanzierungen“. Im Kreditrechner gibst du ein, wie viel du aufnehmen willst, den Zinssatz und die Laufzeit (oder die Rate, die du zahlen kannst). Du siehst die Monatsrate, die Zinsen und was dir danach jeden Monat bleibt. Mit „Als Kredit speichern“ kommt die Rate in deine Fixkosten (Kategorie „Kredite“) und wird jeden Monat abgezogen, bis zur letzten Rate. Für einen Kredit, der schon läuft, trägst du den Betrag vom Anfang und die erste Rate ein, dann siehst du, was noch offen ist und wann du schuldenfrei bist.", "kredite"],
     ["🤔", "Was wäre wenn?", "whatif", "ausprobieren durchrechnen vertrag kaufen", "Probier aus, was ein Kauf oder ein neuer Vertrag mit deinem Geld machen würde, bevor du etwas einträgst. Hier wird nichts gespeichert.", "wasware"],
     ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag kindergeld wohngeld unterhalt einnahme", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Mit „+ Weitere feste Einnahme“ kommen z. B. Kindergeld oder Wohngeld dazu, die jeden Monat gleich sind. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat.", "einnahmen"],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
@@ -2348,7 +2538,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["↻", "Neu laden und Abmelden", "more", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Abmelden kannst du ganz unten bei „Mehr“."],
   ];
   const HELP_GROUPS = [["Übersicht", ["home"]], ["Einträge", ["entries"]], ["Lohn", ["income"]], ["Fixkosten & Kalender", ["costs", "cal"]],
-    ["Planen &amp; auswerten", ["stats", "debts", "bank", "whatif"]], ["Einstellungen", ["settings", "account", "backup", "siri", "more", ""]]];
+    ["Planen &amp; auswerten", ["stats", "debts", "loans", "bank", "whatif"]], ["Einstellungen", ["settings", "account", "backup", "siri", "more", ""]]];
   function renderHelp() {
     const q = $("helpQ").value.trim().toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
@@ -2436,7 +2626,7 @@ body.is-locked .wrap { visibility: hidden; }
 
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri", "account"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri", "account", "loans"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -2654,8 +2844,12 @@ body.is-locked .wrap { visibility: hidden; }
   });
   $("ledger").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.del) { const x = state.items.find(i => i.id === b.dataset.del); deleted(x && x.name, () => { state.items = state.items.filter(i => i.id !== b.dataset.del); }); }
-    else if (b.dataset.edit) { editingCost = b.dataset.edit; render(); }
+    if (b.dataset.del) { const x = state.items.find(i => i.id === b.dataset.del); deleted(x && x.name, () => { state.items = state.items.filter(i => i.id !== b.dataset.del); if (x?.loan) state.loans = state.loans.filter(l => l.id !== x.loan); }); }
+    else if (b.dataset.edit) {
+      const x = state.items.find(i => i.id === b.dataset.edit);
+      // a loan's rate is changed in the loan itself, so the calculation stays right
+      if (x && loanOf(x)) { showTab("loans"); editLoan(x.loan); } else { editingCost = b.dataset.edit; render(); }
+    }
     else if (b.dataset.unpause) { const it = state.items.find(i => i.id === b.dataset.unpause); if (it) { it.pausedUntil = null; scheduleSave(); } }
     else if (b.dataset.pauseMonths) {
       const d = new Date(); d.setMonth(d.getMonth() + Number(b.dataset.pauseMonths));
