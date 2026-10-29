@@ -452,6 +452,15 @@ th, td { border-bottom-color: var(--line); }
 .soon-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: .8rem; color: var(--muted); }
 .soon-head b { color: var(--ink); font-size: .9rem; font-weight: 600; white-space: nowrap; }
 .soon-card .linklike { justify-self: start; font-size: .8rem; }
+.soon-head.soon-in { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; }
+.soon-head b.plus { color: var(--good); }
+.soon-card .hint { font-size: .76rem; }
+.week-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; font-size: .88rem; }
+.week-row small { margin-top: 2px; }
+.week-row b { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+.week-row b.minus { color: var(--bad); }
+.pw-form { display: grid; gap: 10px; }
+.pw-form .btn { justify-self: start; }
 .nm-body { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
 .nm-row { display: flex; justify-content: space-between; gap: 10px; }
 .nm-row.sum { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 700; }
@@ -636,6 +645,7 @@ body.is-locked .wrap { visibility: hidden; }
         </div>
       </form>
       <div class="box" id="resList" hidden></div>
+      <div class="box" id="inList" hidden></div>
       <form class="formbox" id="spendForm" autocomplete="off" hidden>
         <div class="seg" role="group" aria-label="Art des Eintrags">
           <button type="button" data-kind="out" aria-pressed="true">− Ausgabe</button>
@@ -651,8 +661,8 @@ body.is-locked .wrap { visibility: hidden; }
         <div class="fields">
           <div class="field"><label for="spendAmount">Betrag</label><div class="money big"><input id="spendAmount" inputmode="decimal" placeholder="0,00" required><span>€</span></div></div>
           <div class="field"><label for="spendName" id="spendNameLabel">Wofür</label><input type="text" id="spendName" placeholder="z. B. Tanken" required></div>
-          <div class="field wide"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
-          <label class="check wide later-check" id="laterWrap"><input type="checkbox" id="spendLater"><span>Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“</span></label>
+          <div class="field wide" id="spendDateField"><label for="spendDate">Datum</label><input type="date" id="spendDate" required></div>
+          <label class="check wide later-check" id="laterWrap"><input type="checkbox" id="spendLater"><span id="laterText">Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“</span></label>
           <div class="field" id="payOnField" hidden><label for="spendPayOn" id="payOnLabel">Abgebucht am</label><input type="date" id="spendPayOn"></div>
           <div class="field" id="ratesField" hidden><label for="spendRates">Wie bezahlst du?</label><select id="spendRates"><option value="1">Auf einmal</option><option value="2">In 2 Raten</option><option value="3">In 3 Raten</option><option value="4">In 4 Raten</option><option value="6">In 6 Raten</option><option value="12">In 12 Raten</option></select></div>
           <span class="hint wide" id="ratesHint" hidden></span>
@@ -709,6 +719,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="menu">
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="account"><span class="m-ico" aria-hidden="true">🔑</span><span>Konto &amp; Passwort<small>Passwort ändern</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
       </div>
       <span class="menu-h">Hilfe</span>
@@ -834,6 +845,7 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
       <div class="extra-in" id="extraIncomes"></div>
       <button class="btn outline small" type="button" id="addExtraIn">+ Weitere feste Einnahme (z. B. Kindergeld)</button>
+      <button class="btn outline small" type="button" data-plan-in>+ Einmalige Einnahme vormerken (z. B. Weihnachtsgeld)</button>
       <div class="income-total"><span>Gesamt</span><span class="num" id="incomeTotal">0,00 €</span></div>
       <div class="field">
         <label for="payday">Lohn kommt am (Tag im Monat)</label>
@@ -939,6 +951,22 @@ body.is-locked .wrap { visibility: hidden; }
       </div>
       <p class="hint" id="backupMsg" role="status"></p>
     </section>
+
+    <section class="panel" aria-labelledby="accH" data-tab="account">
+      <h2 id="accH">Konto &amp; Passwort</h2>
+      <p class="hint">Angemeldet als <b id="accEmail"></b></p>
+      <form class="box pw-form" id="pwForm" novalidate>
+        <strong>Passwort ändern</strong>
+        <input type="email" id="pwUser" autocomplete="username" hidden>
+        <div class="field"><label for="pwOld">Aktuelles Passwort</label><input type="password" id="pwOld" autocomplete="current-password" required></div>
+        <div class="field"><label for="pwNew">Neues Passwort</label><input type="password" id="pwNew" autocomplete="new-password" minlength="8" required><span class="hint">Mindestens 8 Zeichen.</span></div>
+        <div class="field"><label for="pwNew2">Neues Passwort nochmal</label><input type="password" id="pwNew2" autocomplete="new-password" minlength="8" required></div>
+        <label class="check"><input type="checkbox" id="pwShow"><span>Passwörter anzeigen</span></label>
+        <button class="btn" type="submit" id="pwBtn">Passwort ändern</button>
+        <p class="auth-msg" id="pwMsg" role="status"></p>
+      </form>
+      <p class="hint">Aktuelles Passwort vergessen? Melde dich ganz unten bei „Mehr“ ab und tipp beim Anmelden auf „Passwort vergessen?“.</p>
+    </section>
   </div>
   <nav class="tabbar" id="tabbar" aria-label="Bereiche">
     <button type="button" data-go="home" aria-current="page"><span aria-hidden="true">◉</span>Übersicht</button>
@@ -973,7 +1001,7 @@ body.is-locked .wrap { visibility: hidden; }
     <div class="ask-ico" id="askIco" aria-hidden="true"></div>
     <h2 id="askTitle"></h2>
     <p class="hint" id="askSub"></p>
-    <div class="field" id="askPriceField" hidden><label for="askPrice">Was hat es gekostet?</label><div class="money big"><input id="askPrice" inputmode="decimal" autocomplete="off"><span>€</span></div></div>
+    <div class="field" id="askPriceField" hidden><label for="askPrice" id="askPriceL">Was hat es gekostet?</label><div class="money big"><input id="askPrice" inputmode="decimal" autocomplete="off"><span>€</span></div></div>
     <div class="ask-btns" id="askBtns"></div>
   </div>
 </div>
@@ -1008,7 +1036,7 @@ body.is-locked .wrap { visibility: hidden; }
   const clampEvery = v => Math.min(12, Math.max(1, Math.round(Number(v)) || 1));
   const CACHE_KEY = "fixkosten-cache-";
 
-  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null, extraIn: [] });
+  const blank = () => ({ mainIncome: 0, minijob: 0, payday: null, items: [], expenses: [], debts: [], reserved: [], customCats: [], balance: null, askDue: true, periodStart: null, history: [], warnBelow: 50, warnDaily: true, autoPay: false, autoSkip: null, extraIn: [], planIn: [] });
   let state = blank();
   let sb = null, user = undefined, saveTimer = null, retryTimer = null, saving = false, loaded = false, unsaved = false, welcome = false;
   let editingCost = null, editingSpend = null, spendKind = "out", spendCat = "Einkaufen", pendingImport = null;
@@ -1144,6 +1172,7 @@ body.is-locked .wrap { visibility: hidden; }
     registerCats(state.customCats);
     renderHomeCards(t);
     renderReserved();
+    renderPlanIn();
     renderPrices();
     renderCatManage();
     renderBank(t);
@@ -1162,18 +1191,24 @@ body.is-locked .wrap { visibility: hidden; }
   // the items behind the small line in the ring: reserved money and pay-later debits before the next wage
   function renderSoon(due) {
     const end = isoDay(periodWindow().end), cut = resCut();
+    const coming = comingNow();
     const list = [...state.expenses.filter(e => isLater(e) && e.payOn < end).map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: e.amount })),
       ...state.reserved.filter(r => !r.date || r.date < cut).map(r => ({ ico: "📌", name: r.name, date: r.date || "", amount: r.amount }))]
       .sort((a, b) => a.date.localeCompare(b.date));
-    $("soonBox").hidden = !list.length;
-    if (!list.length) { $("soonBox").innerHTML = ""; return; }
+    $("soonBox").hidden = !list.length && !coming.length;
+    if (!list.length && !coming.length) { $("soonBox").innerHTML = ""; return; }
     const kinds = new Set(list.map(x => x.ico));
     const title = kinds.size > 1 ? "Vorgemerkt &amp; später bezahlen" : kinds.has("📌") ? "Vorgemerkt bis zum Lohn" : "Später bezahlen bis zum Lohn";
-    const shown = list.slice(0, 4);
+    const shown = list.slice(0, 4), inShown = coming.slice(0, 3);
+    const more = list.length - shown.length + coming.length - inShown.length;
+    // money still to come in is listed, but only counts once it is there
     $("soonBox").innerHTML = `<div class="soon-card">
-      <div class="soon-head"><span>${title}</span><b class="num">− ${fmt(due)}</b></div>
+      ${list.length ? `<div class="soon-head"><span>${title}</span><b class="num">− ${fmt(due)}</b></div>` : ""}
       ${shown.map(x => `<div class="nm-due-row"><span aria-hidden="true">${x.ico}</span><span class="nm-due-name">${esc(x.name)} <small>${x.date ? fmtDate(x.date) : "ohne Datum"}</small></span><span class="num">− ${fmt(x.amount)}</span></div>`).join("")}
-      ${list.length > shown.length ? `<button class="linklike" type="button" data-go="entries">und ${list.length - shown.length} weitere ansehen ›</button>` : ""}
+      ${coming.length ? `<div class="soon-head${list.length ? " soon-in" : ""}"><span>Kommt noch rein</span><b class="num plus">+ ${fmt(sum(coming, x => x.amount))}</b></div>
+      ${inShown.map(x => `<div class="nm-due-row"><span aria-hidden="true">💶</span><span class="nm-due-name">${esc(x.name)} <small>${fmtDate(x.date)}</small></span><span class="num plus">+ ${fmt(x.amount)}</span></div>`).join("")}
+      <p class="hint">Zählt erst, wenn es auf dem Konto ist.</p>` : ""}
+      ${more > 0 ? `<button class="linklike" type="button" data-go="entries">und ${more} weitere ansehen ›</button>` : ""}
     </div>`;
   }
   function renderHero(t) {
@@ -1244,6 +1279,10 @@ body.is-locked .wrap { visibility: hidden; }
   const extraIn = () => sum(active().filter(e => e.kind === "in" && e.cat !== CARRY_CAT), e => e.amount);
   const everyday = h => h.byCat ? sum(Object.entries(h.byCat).filter(([k]) => k !== CARRY_CAT), ([, v]) => v) : h.spent;
 
+  // one-time income that is still to come (Weihnachtsgeld, tax refund): listed in the month it is due,
+  // but only counted once the person says it has arrived
+  const comingNow = () => state.planIn.filter(x => x.date < resCut()).sort((a, b) => a.date.localeCompare(b.date));
+
   // what is left once reserved money and pay-later debits before the next wage are taken off (the small line in the ring)
   const afterPlanned = t => t.avail - laterDueNow() - t.reserved;
   function dayBudget(t) {
@@ -1253,7 +1292,22 @@ body.is-locked .wrap { visibility: hidden; }
     const days = Math.max(p.days, 1), budget = Math.max(afterPlanned(t) + spentToday, 0) / days;
     // the same with everything still available, without keeping reserved money aside
     const full = Math.max(t.avail + spentToday, 0) / days;
-    return { budget, full, planned: afterPlanned(t) < t.avail - 0.005, left: budget - spentToday, spentToday };
+    return { budget, full, planned: afterPlanned(t) < t.avail - 0.005, left: budget - spentToday, spentToday, week: weekBudget(t, p) };
+  }
+  // this week (Monday to Sunday, or up to the wage if it comes first): the share of the money for these days
+  // as it was on Monday (or on the day the wage came), minus what was spent since then
+  function weekBudget(t, p) {
+    const now = new Date(); now.setHours(12, 0, 0, 0);
+    const mon = new Date(now); mon.setDate(now.getDate() - (now.getDay() + 6) % 7);
+    const from = state.periodStart && isoDay(new Date(state.periodStart)) > isoDay(mon) ? new Date(state.periodStart) : mon;
+    from.setHours(12, 0, 0, 0);
+    const next = new Date(mon); next.setDate(mon.getDate() + 7);
+    const end = p.date < next ? p.date : next, start = isoDay(from);
+    const spent = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) >= start && payDay(e) <= today()), e => e.amount);
+    const daysLeft = Math.max(Math.round((p.date - from) / 86400000), 1), days = Math.max(Math.round((end - from) / 86400000), 1);
+    const budget = Math.max(afterPlanned(t) + spent, 0) / daysLeft * Math.min(days, daysLeft);
+    const last = new Date(end); last.setDate(last.getDate() - 1);
+    return { budget, left: budget - spent, toPay: p.date < next, last };
   }
 
   // "if you keep spending like so far": daily average since the last wage, carried on until the next one
@@ -1309,10 +1363,15 @@ body.is-locked .wrap { visibility: hidden; }
     const carry = t.avail - laterDueNow();
     const reservedList = state.reserved.filter(r => r.date && r.date >= resCut() && r.date < resNext);
     const reserved = sum(reservedList, r => r.amount);
+    // one-time income: what still comes in before the wage is carried over, what comes in that month is added
+    const inNow = sum(comingNow(), x => x.amount);
+    const inList = state.planIn.filter(x => x.date >= resCut() && x.date < resNext), inNext = sum(inList, x => x.amount);
+    const inLater = sum(state.planIn.filter(x => x.date >= resNext), x => x.amount);
     // what is due in that period, shown right on the card
-    const due = [...plannedList.map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: e.amount })), ...reservedList.map(r => ({ ico: "📌", name: r.name, date: r.date, amount: r.amount }))]
+    const due = [...plannedList.map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: -e.amount })), ...reservedList.map(r => ({ ico: "📌", name: r.name, date: r.date, amount: -r.amount })),
+      ...inList.map(x => ({ ico: "💶", name: x.name, date: x.date, amount: x.amount }))]
       .sort((a, b) => a.date.localeCompare(b.date));
-    return { start, income: t.income, costs, carry, planned, later, reserved, due, total: t.income - costs + carry - planned - reserved };
+    return { start, income: t.income, costs, carry, planned, later, reserved, inNow, inNext, inLater, due, total: t.income - costs + carry - planned - reserved + inNow + inNext };
   }
   function renderNextMonth(t) {
     const el = $("nextMonth");
@@ -1322,16 +1381,19 @@ body.is-locked .wrap { visibility: hidden; }
     el.innerHTML = `<details class="nm-card">
       <summary><div><small>Nächster Monat, ab ${state.payday ? "dem Lohn am " + fmtDate(isoDay(n.start)) : "dem nächsten Lohn"}</small>
         <b class="num ${n.total < 0 ? "minus" : ""}">${fmt(n.total)}</b><span class="hint">voraussichtlich verfügbar, wenn du bis dahin nichts mehr ausgibst</span>
-        ${n.due.length ? `<div class="nm-due"><span class="label">Steht dann an (schon abgezogen)</span>${n.due.slice(0, 4).map(d => `<div class="nm-due-row"><span aria-hidden="true">${d.ico}</span><span class="nm-due-name">${esc(d.name)} <small>${fmtDate(d.date)}</small></span><span class="num">− ${fmt(d.amount)}</span></div>`).join("")}${n.due.length > 4 ? `<span class="hint">und ${n.due.length - 4} weitere</span>` : ""}</div>` : ""}</div><span class="nm-open" aria-hidden="true">›</span></summary>
+        ${n.due.length ? `<div class="nm-due"><span class="label">Steht dann an (schon ${n.inNext ? "eingerechnet" : "abgezogen"})</span>${n.due.slice(0, 4).map(d => `<div class="nm-due-row"><span aria-hidden="true">${d.ico}</span><span class="nm-due-name">${esc(d.name)} <small>${fmtDate(d.date)}</small></span><span class="num${d.amount > 0 ? " plus" : ""}">${d.amount > 0 ? "+" : "−"} ${fmt(Math.abs(d.amount))}</span></div>`).join("")}${n.due.length > 4 ? `<span class="hint">und ${n.due.length - 4} weitere</span>` : ""}</div>` : ""}</div><span class="nm-open" aria-hidden="true">›</span></summary>
       <div class="nm-body">
         ${row("Lohn", n.income)}
         ${row("Fixkosten im nächsten Monat", -n.costs)}
         ${row(t.avail < 0 ? "Minus von jetzt" : "Übrig von jetzt", t.avail, t.avail < 0 ? "minus" : "plus")}
         ${laterDueNow() ? row("Später bezahlen, noch vor dem Lohn", -laterDueNow()) : ""}
+        ${n.inNow ? row("Kommt noch rein, vor dem Lohn", n.inNow, "plus") : ""}
         ${n.planned ? row("Später bezahlen, wird dann abgebucht", -n.planned) : ""}
         ${n.reserved ? row("Vorgemerkt für dann", -n.reserved) : ""}
+        ${n.inNext ? row("Kommt dann rein", n.inNext, "plus") : ""}
         <div class="nm-row sum"><span>Verfügbar</span><span class="num">${fmt(n.total)}</span></div>
         ${n.later ? `<p class="hint">Dazu kommen noch ${fmt(n.later)} aus „Kommt noch“ und Vorgemerktem, die erst danach fällig sind.</p>` : ""}
+        ${n.inLater ? `<p class="hint">Danach kommen noch ${fmt(n.inLater)} rein, die du vorgemerkt hast.</p>` : ""}
       </div></details>`;
   }
 
@@ -1397,6 +1459,15 @@ body.is-locked .wrap { visibility: hidden; }
       + list.map(r => `<div class="res-row"><span>${esc(r.name)}<small>${r.date ? "ca. " + fmtDate(r.date) : "ohne Datum"}</small></span><span class="num">${fmt(r.amount)}</span>`
         + `<span class="actions"><button class="btn outline small" type="button" data-res-buy="${r.id}">Gekauft</button><button class="icon" type="button" data-res-del="${r.id}" aria-label="${esc(r.name)} löschen">✕</button></span></div>`).join("")
       + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(list, r => r.amount))}</span></div>`;
+  }
+
+  function renderPlanIn() {
+    const list = [...state.planIn].sort((a, b) => a.date.localeCompare(b.date));
+    $("inList").hidden = !list.length;
+    $("inList").innerHTML = `<div class="lock-head"><strong>Kommt noch rein</strong><span class="label">zählt, sobald es da ist</span></div>`
+      + list.map(x => `<div class="res-row"><span>${esc(x.name)}<small>am ${fmtDate(x.date)}</small></span><span class="num plus">+ ${fmt(x.amount)}</span>`
+        + `<span class="actions"><button class="btn outline small" type="button" data-in-got="${x.id}">Ist da</button><button class="icon" type="button" data-in-del="${x.id}" aria-label="${esc(x.name)} löschen">✕</button></span></div>`).join("")
+      + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num plus">+ ${fmt(sum(list, x => x.amount))}</span></div>`;
   }
 
   // --- price changes of fixed costs in the last 90 days ---
@@ -1522,6 +1593,7 @@ body.is-locked .wrap { visibility: hidden; }
         name: e.name, sub: e.payOn ? `später bezahlt, gekauft am ${fmtDate(e.date)}` : e.kind === "in" ? "Einzahlung" : e.cat, amount: e.kind === "in" ? e.amount : -e.amount });
     }
     for (const r of state.reserved) if (inMonth(r.date)) add(r.date, { type: "res", ico: "📌", name: r.name, sub: "vorgemerkt", amount: -r.amount });
+    for (const x of state.planIn) if (inMonth(x.date)) add(x.date, { type: "in", ico: "💶", name: x.name, sub: "kommt noch rein (vorgemerkt)", amount: x.amount });
     const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
     for (const it of state.items) {
       let d = nextDue(it, first);
@@ -1591,7 +1663,7 @@ body.is-locked .wrap { visibility: hidden; }
       el.innerHTML = `<div class="today-card"><div><small>Tagesbudget</small><p>Trag ein, an welchem Tag dein Lohn kommt. Dann siehst du hier, wie viel du heute noch ausgeben kannst.</p></div><button class="btn dark small" type="button" data-goto="payday">Lohntag eintragen</button></div>`;
       return;
     }
-    const { budget, full, planned, left, spentToday } = dayBudget(t);
+    const { budget, full, planned, left, spentToday, week } = dayBudget(t);
     const used = budget > 0 ? Math.min(spentToday / budget, 1) : 1;
     const note = budget <= 0 ? (planned ? "Nach dem Vorgemerkten ist bis zum Lohn nichts mehr übrig." : "Gerade ist kein Geld mehr übrig bis zum Lohn.")
       : left < 0 ? `Heute ${fmt(-left)} über dem Budget. Die nächsten Tage wird es dafür etwas weniger.`
@@ -1603,7 +1675,13 @@ body.is-locked .wrap { visibility: hidden; }
     el.innerHTML = `<div class="today-card${left < 0 || budget <= 0 ? " over" : ""}">
       <div class="today-top"><div><small>Heute kannst du noch ausgeben</small><b class="num">${fmt(Math.max(left, 0))}</b></div><span class="today-ico" aria-hidden="true">☀️</span></div>
       <div class="meter" role="img" aria-label="${Math.round(used * 100)} % vom Tagesbudget verbraucht"><span style="width:${used * 100}%"></span></div>
-      ${rows}${note ? `<p class="hint">${note}</p>` : ""}${forecastLine(t)}</div>`;
+      ${rows}${note ? `<p class="hint">${note}</p>` : ""}${weekLine(week)}${forecastLine(t)}</div>`;
+  }
+  function weekLine(w) {
+    if (!w || w.budget <= 0) return "";
+    const until = w.toPay ? "bis zum Lohn" : `bis Sonntag, ${fmtDate(isoDay(w.last))}`;
+    return `<div class="week-row"><div>📅 Diese Woche ${w.left < 0 ? "schon drüber" : "noch"}<small>von ${fmt(w.budget)} ${until}</small></div>`
+      + `<b class="num${w.left < 0 ? " minus" : ""}">${fmt(Math.abs(w.left))}</b></div>`;
   }
   function forecastLine(t) {
     const f = forecast(t);
@@ -1817,6 +1895,7 @@ body.is-locked .wrap { visibility: hidden; }
     s.balance = d.balance && Number.isFinite(Number(d.balance.amount)) ? { amount: Number(d.balance.amount), date: String(d.balance.date || "") } : null;
     s.mainIncome = Number(d.mainIncome) || 0;
     s.minijob = Number(d.minijob) || 0;
+    s.planIn = Array.isArray(d.planIn) ? d.planIn.filter(x => x && x.name && /^\d{4}-\d{2}-\d{2}$/.test(x.date)).map(x => ({ id: String(x.id || uid()), name: String(x.name), amount: Number(x.amount) || 0, date: x.date, askOn: /^\d{4}-\d{2}-\d{2}$/.test(x.askOn) ? x.askOn : null })) : [];
     s.extraIn = Array.isArray(d.extraIn) ? d.extraIn.filter(x => x && typeof x === "object").map(x => ({ id: String(x.id || uid()), name: String(x.name || ""), amount: Number(x.amount) || 0 })) : [];
     const pd = Math.round(Number(d.payday));
     s.payday = pd >= 1 && pd <= 31 ? pd : null;
@@ -1958,7 +2037,16 @@ body.is-locked .wrap { visibility: hidden; }
     $("spendBtn").textContent = isIn ? "Hinzufügen" : "Abziehen";
     $("spendBtn").classList.toggle("good", isIn);
     $("catPick").hidden = isIn;
-    $("laterWrap").hidden = isIn; if (isIn) { $("spendLater").checked = false; $("payOnField").hidden = $("ratesField").hidden = true; $("spendRates").value = "1"; ratesHint(); }
+    $("laterText").textContent = isIn ? "Kommt erst später, z. B. Weihnachtsgeld, Bonus oder Steuererstattung" : "Wird erst später abgebucht, z. B. PayPal „in 30 Tagen bezahlen“";
+    $("spendLater").checked = false; $("spendRates").value = "1"; laterFields();
+  }
+  // deposits that come later only need the day they come; spending paid later can be split into installments
+  function laterFields() {
+    const on = $("spendLater").checked, isIn = spendKind === "in";
+    $("payOnField").hidden = !on; $("ratesField").hidden = !on || isIn;
+    $("spendDateField").hidden = on && isIn;
+    if (!on || isIn) $("spendRates").value = "1";
+    ratesHint();
   }
   document.querySelectorAll(".seg button[data-kind]").forEach(b => b.addEventListener("click", () => setKind(b.dataset.kind)));
   function renderCatPick() {
@@ -2025,6 +2113,24 @@ body.is-locked .wrap { visibility: hidden; }
       scheduleSave();
     }
   });
+
+  // a one-time income that has arrived becomes a normal deposit
+  function gotIn(x, amount) {
+    state.planIn = state.planIn.filter(i => i !== x);
+    state.expenses.push({ id: uid(), kind: "in", name: x.name, amount, date: today(), cat: "Sonstiges", payOn: null });
+  }
+  $("inList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const x = state.planIn.find(i => i.id === (b.dataset.inDel || b.dataset.inGot)); if (!x) return;
+    if (b.dataset.inDel) deleted(x.name, () => { state.planIn = state.planIn.filter(i => i !== x); });
+    else { gotIn(x, x.amount); toast(`<p>„${esc(x.name)}“ ist jetzt als Einzahlung eingetragen. Kam ein anderer Betrag? Mit ✎ kannst du ihn ändern.</p>`, "ok"); scheduleSave(); }
+  });
+  document.querySelectorAll("[data-plan-in]").forEach(b => b.addEventListener("click", () => {
+    showTab("entries", true); setKind("in"); showSpendForm(true);
+    $("spendLater").checked = true; $("spendLater").dispatchEvent(new Event("change"));
+    $("spendForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("spendAmount").focus({ preventScroll: true });
+  }));
 
   // --- events: bank balance check ---
   $("bankForm").addEventListener("submit", e => {
@@ -2095,7 +2201,8 @@ body.is-locked .wrap { visibility: hidden; }
     const t = today(), waiting = x => !x.askOn || x.askOn <= t;
     return [
       ...state.expenses.filter(e => isLater(e) && e.payOn <= t && waiting(e)).sort((a, b) => a.payOn.localeCompare(b.payOn)).map(e => ({ type: "later", x: e })),
-      ...state.reserved.filter(r => r.date && r.date <= t && waiting(r)).sort((a, b) => a.date.localeCompare(b.date)).map(r => ({ type: "res", x: r }))
+      ...state.reserved.filter(r => r.date && r.date <= t && waiting(r)).sort((a, b) => a.date.localeCompare(b.date)).map(r => ({ type: "res", x: r })),
+      ...state.planIn.filter(x => x.date <= t && waiting(x)).sort((a, b) => a.date.localeCompare(b.date)).map(x => ({ type: "in", x }))
     ];
   }
   var asking = null;
@@ -2105,16 +2212,19 @@ body.is-locked .wrap { visibility: hidden; }
     if (!first) { asking = null; $("ask").hidden = true; return; }
     if (asking && asking.x === first.x && !$("ask").hidden) { $("askCount").textContent = list.length > 1 ? `1 von ${list.length}` : ""; return; }
     asking = first;
-    const x = first.x, later = first.type === "later";
+    const x = first.x, later = first.type === "later", inc = first.type === "in";
     $("askCount").textContent = list.length > 1 ? `1 von ${list.length}` : "";
-    $("askIco").textContent = later ? "💳" : "📌";
-    $("askTitle").textContent = later ? `Wurde „${x.name}“ abgebucht?` : `Hast du „${x.name}“ gekauft?`;
+    $("askIco").textContent = later ? "💳" : inc ? "💶" : "📌";
+    $("askTitle").textContent = later ? `Wurde „${x.name}“ abgebucht?` : inc ? `Ist „${x.name}“ angekommen?` : `Hast du „${x.name}“ gekauft?`;
     $("askSub").textContent = later ? `${fmt(x.amount)} · sollte am ${fmtDate(x.payOn)} abgebucht werden. Erst wenn du „Ja“ sagst, wird es abgezogen.`
+      : inc ? `${fmt(x.amount)} sollten am ${fmtDate(x.date)} kommen. Wenn das Geld da ist, wird es als Einzahlung dazugezählt.`
       : `${fmt(x.amount)} vorgemerkt (für den ${fmtDate(x.date)}). Wenn du es gekauft hast, wird es als Ausgabe abgezogen.`;
     $("askPriceField").hidden = later;
+    $("askPriceL").textContent = inc ? "Wie viel ist gekommen?" : "Was hat es gekostet?";
     $("askPrice").value = later ? "" : String(x.amount.toFixed(2)).replace(".", ",");
     $("askBtns").innerHTML = later
       ? `<button class="btn" type="button" data-ask="yes">Ja, wurde abgebucht</button><button class="btn ghost" type="button" data-ask="later">Noch nicht, morgen nochmal fragen</button>`
+      : inc ? `<button class="btn good" type="button" data-ask="yes">Ja, ist da</button><button class="btn ghost" type="button" data-ask="later">Noch nicht, morgen nochmal fragen</button><button class="linklike" type="button" data-ask="drop">Kommt doch nicht</button>`
       : `<button class="btn" type="button" data-ask="yes">Ja, gekauft</button><button class="btn ghost" type="button" data-ask="later">Noch nicht, morgen nochmal fragen</button><button class="linklike" type="button" data-ask="drop">Brauche ich nicht mehr</button>`;
     $("ask").hidden = false;
   }
@@ -2123,6 +2233,12 @@ body.is-locked .wrap { visibility: hidden; }
     const { type, x } = asking, act = b.dataset.ask;
     if (type === "later") {
       if (act === "yes") { x.done = true; x.askOn = null; } else x.askOn = tomorrow();
+    } else if (type === "in") {
+      const got = parseEuro($("askPrice").value);
+      if (act === "yes" && (Number.isNaN(got) || got <= 0)) { $("askPrice").focus(); return; }
+      if (act === "yes") gotIn(x, got);
+      else if (act === "drop") state.planIn = state.planIn.filter(i => i !== x);
+      else x.askOn = tomorrow();
     } else if (act === "yes") {
       const price = parseEuro($("askPrice").value);
       if (Number.isNaN(price) || price <= 0) { $("askPrice").focus(); return; }
@@ -2190,17 +2306,19 @@ body.is-locked .wrap { visibility: hidden; }
     ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung.", "uebersicht"],
     ["📌", "Vorgemerktes unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich. Darunter zeigt eine kleine Liste, was genau vorgemerkt ist oder noch abgebucht wird.", "tagesbudget"],
     ["☀️", "Heute kannst du noch ausgeben", "home", "tagesbudget pro tag heute ausgeben", "Das Geld nach Vorgemerktem und „später bezahlen“ (die kleine Zahl im Kreis), geteilt durch die Tage bis zum Lohn. So bleibt das schon verplante Geld übrig. Hast du etwas vorgemerkt, siehst du darunter zwei Zeilen: wie viel pro Tag nach dem Vorgemerkten geht und wie viel mit allem, was noch verfügbar ist.", "tagesbudget"],
+    ["📅", "Wochenbudget", "home", "woche wochenbudget diese woche sonntag montag", "In der Karte „Heute kannst du noch ausgeben“ steht, wie viel du diese Woche (Montag bis Sonntag) noch ausgeben kannst. Am Montag bekommt die Woche ihren Anteil vom Geld bis zum Lohn, alles was du bis Sonntag ausgibst, geht davon ab. Kommt der Lohn mitten in der Woche, gilt sie nur bis zum Lohn.", "wochenbudget"],
     ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein.", "korrigieren"],
     ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen.", "uebersicht"],
     ["🔮", "Prognose bis zum Lohn", "home", "prognose vorhersage weitermachen lohntag ende monat schnitt", "In der Karte „Heute kannst du noch ausgeben“ steht unten, wie viel dir am Lohntag voraussichtlich bleibt, wenn du so weiter ausgibst wie seit dem letzten Lohn (Durchschnitt pro Tag). Fixkosten, Vorgemerktes und „später bezahlen“ bis zum Lohn sind schon abgezogen. Ab dem 3. Tag nach dem Lohn wird es angezeigt."],
     ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin.", "uebersicht"],
     ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen.", "ausgabe"],
     ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt.", "einzahlung"],
+    ["🎁", "Einmalige Einnahme vormerken", "entries", "weihnachtsgeld urlaubsgeld bonus steuererstattung steuer prämie einmalig später kommt noch rein", "Kommt bald einmalig Geld, z. B. Weihnachtsgeld, ein Bonus oder die Steuererstattung? Bei „+ Einzahlung“ den Haken „Kommt erst später“ setzen und den Tag wählen (oder unter „Lohn & Einkommen“ auf „+ Einmalige Einnahme vormerken“). Es zählt erst, wenn es da ist: Vorher steht es unter dem Kreis bei „Kommt noch rein“ oder bei „Nächster Monat“. Am Tag fragt die App, ob das Geld gekommen ist und wie viel, dann wird es eine Einzahlung.", "einmalig"],
     ["📶", "Ohne Internet eintragen", "entries", "offline internet netz kein empfang funkloch flugmodus", "Du kannst auch ohne Internet Ausgaben eintragen. Oben steht dann „Offline gespeichert ✓“. Sobald du wieder Internet hast, lädt die App alles automatisch hoch, auch wenn du sie zwischendurch geschlossen hast.", "offline"],
     ["👯", "Doppelte Einträge", "entries", "doppelt zweimal versehentlich nochmal gleich", "Trägst du eine Ausgabe mit gleichem Namen, Betrag und Tag ein zweites Mal ein, fragt die App vorher nach, ob das wirklich so gewollt ist.", "doppelt"],
     ["✎", "Eintrag ändern oder löschen", "entries", "bearbeiten löschen falsch", "In der Liste bei „Einträge“ auf ✎ tippen zum Ändern, auf ✕ zum Löschen. Aus Versehen gelöscht? Unten erscheint ein paar Sekunden lang „Rückgängig“."],
     ["⏳", "Später bezahlen (PayPal, Klarna)", "entries", "paypal klarna 30 tage abbuchung kommt noch", "Beim Eintragen einer Ausgabe „Wird erst später abgebucht“ anhaken und das Datum der Abbuchung wählen. Bis dahin steht sie unter „Kommt noch“. Am Tag der Abbuchung fragt dich die App, ob sie abgebucht wurde, und zieht sie dann ab.", "spaeter"],
-    ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung oder eines vorgemerkten Kaufs da, fragt dich die App beim Öffnen, ob es abgebucht bzw. gekauft wurde. Erst bei „Ja“ wird es vom Verfügbaren abgezogen. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal.", "nachfrage"],
+    ["🔔", "Nachfrage: abgebucht oder gekauft?", "entries", "fällig nachfrage frage abgebucht gekauft hinweis datum erreicht", "Ist der Tag einer „später bezahlen“-Abbuchung, eines vorgemerkten Kaufs oder einer vorgemerkten Einnahme da, fragt dich die App beim Öffnen, ob es abgebucht, gekauft oder angekommen ist. Erst bei „Ja“ wird es abgezogen bzw. dazugezählt. Bei „Noch nicht“ fragt sie am nächsten Tag noch mal.", "nachfrage"],
     ["🔢", "In Raten bezahlen", "entries", "raten ratenzahlung klarna abzahlen", "Bei „später bezahlen“ kannst du „In 2 Raten“, „In 3 Raten“ usw. wählen. Jede Rate wird in ihrem eigenen Monat abgezogen.", "raten"],
     ["📌", "Geld vormerken", "entries", "reservieren zurücklegen geschenk planen", "Für etwas, das du bald kaufen willst. Unter „Einträge“ auf „＋ Geld vormerken“ tippen. Es wird nicht abgezogen, steht aber klein unter dem Kreis. Unter dem Kreis zählt nur, was im Monat deines Lohns ansteht, der Rest steht bei „Nächster Monat“. Kommt dein Lohn ein paar Tage vor dem 1. (z. B. am 29. Oktober), gilt er schon für den neuen Monat, und alles für November steht direkt unter dem Kreis. Wenn du es kaufst, tipp auf „Gekauft“, dann wird es eine Ausgabe.", "vormerken"],
     ["🏷️", "Kategorien und eigene Kategorien", "entries", "kategorie eigene symbol essen tanken sonstiges", "Jede Ausgabe bekommt eine Kategorie, zum Beispiel Essen oder Tanken. Mit „＋ Eigene“ legst du eigene Kategorien mit Symbol an. Löschst du eine, landen ihre Einträge bei „Sonstiges“.", "kategorien"],
@@ -2225,11 +2343,12 @@ body.is-locked .wrap { visibility: hidden; }
     ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
     ["💤", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
     ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie.", "siri"],
+    ["🔑", "Passwort ändern", "account", "passwort kennwort ändern neu sicherheit konto login anmelden email", "Unter „Mehr“ → „Konto & Passwort“ gibst du dein aktuelles Passwort und zweimal das neue ein (mindestens 8 Zeichen). Aktuelles Passwort vergessen? Dann abmelden und beim Anmelden auf „Passwort vergessen?“ tippen.", "passwort"],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
     ["↻", "Neu laden und Abmelden", "more", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Abmelden kannst du ganz unten bei „Mehr“."],
   ];
   const HELP_GROUPS = [["Übersicht", ["home"]], ["Einträge", ["entries"]], ["Lohn", ["income"]], ["Fixkosten & Kalender", ["costs", "cal"]],
-    ["Planen &amp; auswerten", ["stats", "debts", "bank", "whatif"]], ["Einstellungen", ["settings", "backup", "siri", "more", ""]]];
+    ["Planen &amp; auswerten", ["stats", "debts", "bank", "whatif"]], ["Einstellungen", ["settings", "account", "backup", "siri", "more", ""]]];
   function renderHelp() {
     const q = $("helpQ").value.trim().toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
@@ -2317,7 +2436,7 @@ body.is-locked .wrap { visibility: hidden; }
 
   // --- tabs: one area at a time, chosen in the bar at the bottom ---
   // pages reached from "Mehr"; they show a back button and keep "Mehr" lit in the bar
-  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri"];
+  const SUB_PAGES = ["stats", "debts", "income", "settings", "backup", "whatif", "bank", "help", "siri", "account"];
   function showTab(name, keepScroll) {
     document.querySelectorAll("[data-tab]").forEach(el => { el.hidden = el.dataset.tab !== name; });
     const bar = SUB_PAGES.includes(name) ? "more" : name;
@@ -2347,16 +2466,15 @@ body.is-locked .wrap { visibility: hidden; }
   $("spendDate").value = today();
   const ratesHint = () => {
     const n = Number($("spendRates").value), amount = parseEuro($("spendAmount").value);
-    $("payOnLabel").textContent = n > 1 ? "Erste Rate am" : "Abgebucht am";
+    $("payOnLabel").textContent = spendKind === "in" ? "Kommt am" : n > 1 ? "Erste Rate am" : "Abgebucht am";
     $("ratesHint").hidden = n <= 1;
     $("ratesHint").textContent = n > 1 ? (amount > 0 ? `${n} Raten zu je ca. ${fmt(round2(amount / n))}, jeden Monat eine. ` : "") + "Jede Rate wird erst in ihrem Monat abgezogen." : "";
   };
   ["spendRates", "spendAmount"].forEach(id => $(id).addEventListener("input", ratesHint));
   $("spendRates").addEventListener("change", ratesHint);
   $("spendLater").addEventListener("change", () => {
-    $("payOnField").hidden = $("ratesField").hidden = !$("spendLater").checked;
-    if (!$("spendLater").checked) { $("spendRates").value = "1"; ratesHint(); }
-    if ($("spendLater").checked && !$("spendPayOn").value) {
+    laterFields();
+    if ($("spendLater").checked && spendKind !== "in" && !$("spendPayOn").value) {
       const d = new Date(($("spendDate").value || today()) + "T12:00:00"); d.setDate(d.getDate() + 30);
       $("spendPayOn").value = isoDay(d);
     }
@@ -2365,6 +2483,18 @@ body.is-locked .wrap { visibility: hidden; }
     e.preventDefault();
     const amount = parseEuro($("spendAmount").value);
     if (Number.isNaN(amount) || amount <= 0) { $("spendAmount").focus(); return; }
+    // a deposit that only comes later (Weihnachtsgeld, tax refund) is noted down and counted once it is there
+    if (spendKind === "in" && $("spendLater").checked) {
+      const on = $("spendPayOn").value;
+      if (!on || on <= today()) { $("spendPayOn").focus(); toast("<p>Wähl bei „Kommt am“ einen Tag nach heute. Ist das Geld schon da, nimm den Haken raus.</p>"); return; }
+      const name = $("spendName").value.trim();
+      state.planIn.push({ id: uid(), name, amount, date: on, askOn: null });
+      toast(`<p>„${esc(name)}“ ist vorgemerkt. Es zählt erst, wenn es da ist. Am ${fmtDate(on)} fragt dich die App, ob das Geld gekommen ist.</p>`, "ok", 7000);
+      $("spendName").value = $("spendAmount").value = $("spendPayOn").value = ""; $("spendDate").value = today();
+      $("spendLater").checked = false; laterFields();
+      showSpendForm(false); scheduleSave();
+      return;
+    }
     const date = $("spendDate").value || today();
     // same name, amount and day as an entry that is already there: probably tapped twice
     const nm = $("spendName").value.trim().toLowerCase();
@@ -2380,7 +2510,7 @@ body.is-locked .wrap { visibility: hidden; }
       state.expenses.push({ id: uid(), kind: spendKind, name: rates > 1 ? `${name} (Rate ${k + 1}/${rates})` : name, amount: k === rates - 1 ? round2(amount - part * (rates - 1)) : part,
         date, cat: spendKind === "in" ? "Sonstiges" : spendCat, payOn: due && due > date ? due : null });
     }
-    $("spendLater").checked = false; $("payOnField").hidden = $("ratesField").hidden = true; $("spendRates").value = "1"; ratesHint();
+    $("spendLater").checked = false; laterFields();
     const fresh = warnings(totals()).filter(([k]) => !before.has(k));
     if (fresh.length) toast(fresh.map(([, text]) => `<p>⚠️ ${text}</p>`).join(""));
     $("spendName").value = ""; $("spendAmount").value = ""; $("spendDate").value = today();
@@ -2592,6 +2722,8 @@ body.is-locked .wrap { visibility: hidden; }
     if (/already registered|already been registered/i.test(m)) return "Für diese E-Mail gibt es schon ein Konto. Melde dich an.";
     if (/signups? not allowed|signup.*disabled/i.test(m)) return "Neue Konten sind für diese Seite ausgeschaltet.";
     if (/password.*(at least|characters)|weak/i.test(m)) return "Das Passwort muss mindestens 8 Zeichen haben.";
+    if (/different from the old/i.test(m)) return "Das neue Passwort muss anders sein als das alte.";
+    if (/reauthenticat/i.test(m)) return "Das geht gerade nur über „Passwort vergessen?“ beim Anmelden.";
     if (/rate limit|too many/i.test(m)) return "Zu viele Versuche. Warte ein paar Minuten und versuch es dann nochmal.";
     if (/fetch|network/i.test(m)) return "Keine Verbindung. Prüf dein Internet.";
     return "Das hat nicht geklappt: " + m;
@@ -2643,6 +2775,29 @@ body.is-locked .wrap { visibility: hidden; }
     $("newPw").value = "";
     showNewPassword(false);
   });
+  // change the password while signed in: the current one is checked first, so nobody can do it on an unlocked phone
+  const pwMsg = (text, kind = "") => { $("pwMsg").textContent = text; $("pwMsg").className = "auth-msg " + kind; };
+  $("pwShow").addEventListener("change", () => ["pwOld", "pwNew", "pwNew2"].forEach(id => { $(id).type = $("pwShow").checked ? "text" : "password"; }));
+  $("pwForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const old = $("pwOld").value, pw = $("pwNew").value;
+    if (!old) { pwMsg("Gib zuerst dein aktuelles Passwort ein.", "err"); $("pwOld").focus(); return; }
+    if (pw.length < 8) { pwMsg("Das neue Passwort muss mindestens 8 Zeichen haben.", "err"); $("pwNew").focus(); return; }
+    if (pw !== $("pwNew2").value) { pwMsg("Die beiden neuen Passwörter sind nicht gleich.", "err"); $("pwNew2").focus(); return; }
+    if (pw === old) { pwMsg("Das neue Passwort muss anders sein als das alte.", "err"); $("pwNew").focus(); return; }
+    if (!user?.email) return;
+    $("pwBtn").disabled = true; pwMsg("Einen Moment …");
+    try {
+      const check = await sb.auth.signInWithPassword({ email: user.email, password: old });
+      if (check.error) throw /invalid login credentials/i.test(check.error.message) ? new Error("Das aktuelle Passwort stimmt nicht.") : check.error;
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) throw error;
+      ["pwOld", "pwNew", "pwNew2"].forEach(id => { $(id).value = ""; });
+      pwMsg("✅ Passwort geändert. Ab jetzt meldest du dich mit dem neuen an.", "ok");
+    } catch (err) { pwMsg(/aktuelle Passwort/.test(err.message) ? err.message : authError(err), "err"); }
+    finally { $("pwBtn").disabled = false; }
+  });
+
   $("logoutBtn").addEventListener("click", async () => {
     if (unsaved) await save();
     await sb.auth.signOut();
@@ -2655,6 +2810,7 @@ body.is-locked .wrap { visibility: hidden; }
     clearTimeout(saveTimer); clearTimeout(retryTimer); saveTimer = null;
     editingCost = editingSpend = null;
     $("auth").hidden = !!user; $("app").hidden = !user; $("logoutBtn").hidden = !user;
+    $("accEmail").textContent = $("pwUser").value = user?.email || ""; $("pwMsg").textContent = "";
     if (!user) { state = blank(); render(); setStatus("idle", ""); $("authEmail").focus(); return; }
     try { const c = localStorage.getItem(CACHE_KEY + user.id); state = c ? normalize(JSON.parse(c)) : blank(); } catch { state = blank(); }
     try { unsaved = !!localStorage.getItem(PENDING_KEY + user.id); } catch {}
