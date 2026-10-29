@@ -249,7 +249,8 @@ h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
 .btn.danger { background: var(--bad); color: #fff; }
 .btn.good { background: var(--good); color: var(--accent-ink); }
 .btn.small { min-height: 32px; border-radius: 10px; }
-#reloadBtn, #logoutBtn { background: var(--surface); color: var(--muted); }
+#reloadBtn { background: var(--surface); color: var(--muted); }
+#logoutBtn { justify-self: center; color: var(--muted); background: var(--surface); margin-top: 6px; }
 .btn:focus-visible, .icon:focus-visible, .seg button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 input[type="text"], input[type="search"], input[type="date"], input[type="number"], input[type="email"], input[type="password"], select, .money {
   background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); min-height: 44px;
@@ -386,6 +387,7 @@ th, td { border-bottom-color: var(--line); }
 .mini-card small b { color: var(--ink); font-size: inherit; font-weight: 700; }
 .mini-card.pay { border: 1px solid var(--good); }
 .menu { display: grid; background: var(--surface); border-radius: 16px; overflow: hidden; }
+.menu-h { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 6px 0 -4px 4px; }
 .menu button { display: flex; align-items: center; gap: 12px; padding: 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); text-align: left; font: 600 .98rem var(--body); cursor: pointer; }
 .menu button:last-child { border-bottom: 0; }
 .menu button > span:nth-child(2) { flex: 1; min-width: 0; }
@@ -486,7 +488,14 @@ th, td { border-bottom-color: var(--line); }
 .seg-btn { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 12px; padding: 10px 8px; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; min-height: 48px; }
 .seg-btn[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .seg-btn:disabled { opacity: .45; }
+.sv-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sv-pick .seg-btn { min-height: 42px; }
+[data-sv-off] { display: none !important; }
+.hist-row { display: grid; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.hist-row:last-child { border-bottom: 0; }
+.hist-row span { color: var(--muted); font-size: .84rem; }
 .lock-head { display: flex; justify-content: space-between; align-items: baseline; }
+.box-head { display: grid; gap: 2px; }
 .lock-setup { display: grid; gap: 10px; }
 #lockBtns:empty { display: none; }
 .ask { position: fixed; inset: 0; z-index: 90; background: #000b; display: grid; align-items: end; justify-items: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
@@ -527,7 +536,6 @@ body.is-locked .wrap { visibility: hidden; }
     </div>
     <div class="top-right">
       <button class="btn ghost small" type="button" id="reloadBtn" aria-label="Seite neu laden" title="Neu laden">↻</button>
-      <button class="btn ghost small" type="button" id="logoutBtn" hidden>Abmelden</button>
     </div>
   </div>
 
@@ -572,9 +580,13 @@ body.is-locked .wrap { visibility: hidden; }
     </div>
     <div class="perday" id="perDay"></div>
     <div class="ring-keys" id="legend"></div>
+    <div class="quick">
+      <button class="btn" type="button" data-quick="out">− Ausgabe</button>
+      <button class="btn dark" type="button" data-quick="in">+ Einzahlung</button>
+    </div>
+    <div class="today" id="today"></div>
     <div class="soon" id="soonBox" hidden></div>
     <div class="home-cards" id="homeCards"></div>
-    <div class="today" id="today"></div>
     <div class="next-month" id="nextMonth"></div>
     <div class="hero-figure">
       <button class="linklike" type="button" id="fixBtn">Betrag stimmt nicht? Korrigieren</button>
@@ -588,10 +600,6 @@ body.is-locked .wrap { visibility: hidden; }
         <span class="hint">Den Unterschied trägt die Seite unten als „Korrektur“ ein. Du kannst ihn dort jederzeit wieder löschen.</span>
         <div class="row-btns"><button class="btn" type="submit">Übernehmen</button><button class="btn ghost" type="button" id="fixCancel">Abbrechen</button></div>
       </form>
-    </div>
-    <div class="quick">
-      <button class="btn" type="button" data-quick="out">− Ausgabe</button>
-      <button class="btn dark" type="button" data-quick="in">+ Einzahlung</button>
     </div>
     <details class="calc">
       <summary>So wird gerechnet</summary>
@@ -690,17 +698,25 @@ body.is-locked .wrap { visibility: hidden; }
 
     <section class="panel" aria-label="Mehr" data-tab="more">
       <h2>Mehr</h2>
+      <span class="menu-h">Planen &amp; auswerten</span>
       <div class="menu">
-        <button type="button" data-go="help"><span class="m-ico" aria-hidden="true">❓</span><span>Hilfe &amp; Suche<small>Jede Funktion erklärt, mit Suche</small></span><b aria-hidden="true">›</b></button>
-        <button type="button" data-go="siri"><span class="m-ico" aria-hidden="true">🎙️</span><span>Siri &amp; Kurzbefehl<small>„Hey Siri, Ausgabe eintragen“ einrichten</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="stats"><span class="m-ico" aria-hidden="true">📊</span><span>Auswertung<small>Wofür dein Geld weggeht, Vergleich, Jahr, Verlauf</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="debts"><span class="m-ico" aria-hidden="true">🤝</span><span>Geld verliehen &amp; geliehen<small id="menuDebts">Wer dir was schuldet und wem du was schuldest</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="bank"><span class="m-ico" aria-hidden="true">🏦</span><span>Kontostand-Abgleich<small id="menuBank">Prüfen, ob dein Konto zur App passt</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="whatif"><span class="m-ico" aria-hidden="true">🤔</span><span>Was wäre wenn?<small>Neuen Vertrag oder große Ausgabe vorher durchrechnen</small></span><b aria-hidden="true">›</b></button>
+      </div>
+      <span class="menu-h">Einstellungen</span>
+      <div class="menu">
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
       </div>
+      <span class="menu-h">Hilfe</span>
+      <div class="menu">
+        <button type="button" data-go="help"><span class="m-ico" aria-hidden="true">❓</span><span>Hilfe &amp; Suche<small>Jede Funktion erklärt, mit Suche</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="siri"><span class="m-ico" aria-hidden="true">🎙️</span><span>Siri &amp; Kurzbefehl<small>„Hey Siri, Ausgabe eintragen“ einrichten</small></span><b aria-hidden="true">›</b></button>
+      </div>
+      <button class="btn ghost small" type="button" id="logoutBtn" hidden>Abmelden</button>
     </section>
 
     <section class="panel" aria-labelledby="siriH" data-tab="siri">
@@ -779,7 +795,15 @@ body.is-locked .wrap { visibility: hidden; }
       <div id="debtList"></div>
     </section>
 
-    <section class="panel" aria-labelledby="anaH" data-tab="stats">
+    <section class="panel stats-switch" aria-label="Ansicht der Auswertung" data-tab="stats">
+      <h2>Auswertung</h2>
+      <div class="sv-pick" role="radiogroup" aria-label="Ansicht">
+        <button type="button" class="seg-btn" role="radio" data-sv="month" aria-checked="true">Dieser Monat</button>
+        <button type="button" class="seg-btn" role="radio" data-sv="year" aria-checked="false">Jahr</button>
+        <button type="button" class="seg-btn" role="radio" data-sv="hist" aria-checked="false">Verlauf</button>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="anaH" data-tab="stats" data-sv-show="month">
       <div class="panel-head"><h2>Spar-Hinweise</h2></div>
       <div class="box" id="hintBox"></div>
       <div class="panel-head"><h2>Wochenrückblick</h2></div>
@@ -790,7 +814,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="box" id="compare"></div>
     </section>
 
-    <section class="panel" aria-labelledby="yearH" data-tab="stats">
+    <section class="panel" aria-labelledby="yearH" data-tab="stats" data-sv-show="year" data-sv-off>
       <div class="panel-head"><h2 id="yearH">Jahresübersicht</h2>
         <div class="year-nav"><button class="icon" type="button" id="yearPrev" aria-label="Jahr davor">‹</button><span class="num" id="yearLabel"></span><button class="icon" type="button" id="yearNext" aria-label="Jahr danach">›</button></div>
       </div>
@@ -855,7 +879,7 @@ body.is-locked .wrap { visibility: hidden; }
   </section>
 
   <div class="cols">
-    <section class="panel" aria-labelledby="histH" data-tab="stats">
+    <section class="panel" aria-labelledby="histH" data-tab="stats" data-sv-show="hist" data-sv-off>
       <h2 id="histH">Verlauf</h2>
       <div id="history"></div>
       <button class="btn ghost" type="button" id="clearHistBtn" hidden>Verlauf leeren</button>
@@ -960,7 +984,7 @@ body.is-locked .wrap { visibility: hidden; }
 <script>
 (() => {
   const CAT_COLORS = { Wohnen: "--c1", "Verträge": "--c4", Versicherungen: "--c6", Auto: "--c3", Sparen: "--c2", Freizeit: "--c8", Sonstiges: "--c7" };
-  const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Freizeit: "🎉", Sonstiges: "📦" };
+  const CAT_ICONS = { Wohnen: "🏠", "Verträge": "📱", Versicherungen: "🛡️", Auto: "🚗", Sparen: "🐷", Abos: "📺", Freizeit: "🎉", Sonstiges: "📦" };
   const DEFAULT_CATS = Object.keys(CAT_COLORS);
   // everyday spending categories; "Korrektur" and "Übertrag" are set by the page itself
   const SPEND_CATS = { Essen: ["🍔", "--c3"], Einkaufen: ["🛒", "--c1"], Tanken: ["⛽", "--c5"], Freizeit: ["🎉", "--c4"], Kleidung: ["👕", "--c6"], Sonstiges: ["📦", "--c7"], Korrektur: ["✏️", "--c8"], "Übertrag": ["↩️", "--c7"] };
@@ -1157,9 +1181,9 @@ body.is-locked .wrap { visibility: hidden; }
     $("avail").classList.toggle("neg", t.avail < 0);
     // pay-later items debited in this wage period (later ones show up in "Nächster Monat") plus reserved money
     const later = laterDueNow(), due = later + t.reserved;
-    const what = later && t.reserved ? "„später bezahlen“/vorgemerkt" : later ? "„später bezahlen“" : "vorgemerkt";
+    const what = t.reserved ? "Vorgemerktem" : "„später bezahlen“";
     $("afterLater").hidden = !due;
-    if (due) $("afterLater").innerHTML = `nach ${what} voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>noch zur Verfügung`;
+    if (due) $("afterLater").innerHTML = `nach ${what} noch<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>`;
     renderSoon(due);
     $("eqIncome").textContent = fmt(t.income);
     $("eqCosts").textContent = "− " + fmt(t.costs);
@@ -1371,7 +1395,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("resList").hidden = !list.length;
     $("resList").innerHTML = `<div class="lock-head"><strong>Vorgemerkt</strong><span class="label">noch nicht abgezogen</span></div>`
       + list.map(r => `<div class="res-row"><span>${esc(r.name)}<small>${r.date ? "ca. " + fmtDate(r.date) : "ohne Datum"}</small></span><span class="num">${fmt(r.amount)}</span>`
-        + `<span class="actions"><button class="btn small" type="button" data-res-buy="${r.id}">Gekauft</button><button class="icon" type="button" data-res-del="${r.id}" aria-label="${esc(r.name)} löschen">✕</button></span></div>`).join("")
+        + `<span class="actions"><button class="btn outline small" type="button" data-res-buy="${r.id}">Gekauft</button><button class="icon" type="button" data-res-del="${r.id}" aria-label="${esc(r.name)} löschen">✕</button></span></div>`).join("")
       + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(list, r => r.amount))}</span></div>`;
   }
 
@@ -1436,9 +1460,10 @@ body.is-locked .wrap { visibility: hidden; }
     const total = Math.max((w.end - w.start) / 86400000, 1), gone = Math.min(Math.max((now - w.start) / 86400000, 0), total);
     const by = spendByCat(), spent = sum(Object.values(by), v => v);
     if (t.income && gone >= 3 && spent > 0) {
-      const projected = spent / gone * total, endLeft = t.avail - (projected - spent);
-      out.push(endLeft < 0 ? ["📉", `Wenn du so weitermachst wie bisher, wärst du am Monatsende ca. <b class="minus">${fmt(-endLeft)} im Minus</b>.`, true]
-        : ["📈", `Wenn du so weitermachst wie bisher, bleiben am Monatsende ca. <b class="plus">${fmt(endLeft)}</b> übrig.`, false]);
+      // same forecast as on the overview (after reserved money) so both places show one number
+      const f = forecast(t), projected = spent / gone * total, endLeft = f && !f.early ? f.left : t.avail - (projected - spent);
+      out.push(endLeft < 0 ? ["📉", `Wenn du so weitermachst wie bisher, wärst du am Lohntag ca. <b class="minus">${fmt(-endLeft)} im Minus</b>.`, true]
+        : ["📈", `Wenn du so weitermachst wie bisher, bleiben am Lohntag ca. <b class="plus">${fmt(endLeft)}</b> übrig.`, false]);
     }
     const past = state.history.filter(h => h.byCat && h.start);
     if (past.length && gone >= 3) {
@@ -1677,7 +1702,7 @@ body.is-locked .wrap { visibility: hidden; }
     $("spendSince").textContent = state.periodStart ? "seit " + fmtDate(state.periodStart, true) : "";
     const later = state.expenses.filter(isLater).sort((a, b) => a.payOn.localeCompare(b.payOn));
     $("laterList").hidden = !later.length;
-    $("laterList").innerHTML = `<div class="lock-head"><strong>Kommt noch</strong><span class="label">wird abgezogen, sobald du die Abbuchung bestätigst</span></div>`
+    $("laterList").innerHTML = `<div class="box-head"><strong>Kommt noch</strong><span class="label">wird abgezogen, sobald du die Abbuchung bestätigst</span></div>`
       + `<div class="list">${later.map(e => e.id === editingSpend ? spendEditor(e) : spendRow(e)).join("")}</div>`
       + `<div class="due-row total"><span></span><span>Zusammen</span><span class="num">${fmt(sum(later, e => e.amount))}</span></div>`;
     const list = active().sort((a, b) => b.date.localeCompare(a.date));
@@ -1775,10 +1800,8 @@ body.is-locked .wrap { visibility: hidden; }
       $("history").innerHTML = `<p class="hint">Wenn du auf „Neuer Lohn ist da“ tippst, landet hier, wie viel du im abgelaufenen Zeitraum ausgegeben und mitgenommen hast.</p>`;
       return;
     }
-    $("history").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Ausgaben</th><th>Einzahlungen</th><th>Übertrag</th></tr></thead><tbody>
-      ${state.history.map(h => `<tr><td>${h.start ? fmtDate(h.start) + " – " : "bis "}${fmtDate(h.end, true)}</td>
-        <td class="num">${fmt(h.spent || 0)}</td><td class="num">${fmt(h.added || 0)}</td><td class="num${h.carried < 0 ? " minus" : ""}">${fmt(h.carried || 0)}</td></tr>`).join("")}
-      </tbody></table></div>`;
+    $("history").innerHTML = `<div class="box">${state.history.map(h => `<div class="hist-row"><b>${h.start ? fmtDate(h.start) + " – " : "bis "}${fmtDate(h.end, true)}</b>
+      <span>Ausgaben <b class="num">${fmt(h.spent || 0)}</b> · Einzahlungen <b class="num">${fmt(h.added || 0)}</b> · Übertrag <b class="num${h.carried < 0 ? " minus" : ""}">${fmt(h.carried || 0)}</b></span></div>`).join("")}</div>`;
   }
 
   // --- data ---
@@ -2164,7 +2187,7 @@ body.is-locked .wrap { visibility: hidden; }
   // --- help center: every feature explained, with a search ---
   const HELP = [
     ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung.", "uebersicht"],
-    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich. Darunter zeigt eine kleine Liste, was genau vorgemerkt ist oder noch abgebucht wird.", "spaeter"],
+    ["📌", "Vorgemerktes unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich. Darunter zeigt eine kleine Liste, was genau vorgemerkt ist oder noch abgebucht wird.", "spaeter"],
     ["☀️", "Heute kannst du noch ausgeben", "home", "tagesbudget pro tag heute ausgeben", "Das Geld nach Vorgemerktem und „später bezahlen“ (die kleine Zahl im Kreis), geteilt durch die Tage bis zum Lohn. So bleibt das schon verplante Geld übrig. Hast du etwas vorgemerkt, siehst du darunter zwei Zeilen: wie viel pro Tag nach dem Vorgemerkten geht und wie viel mit allem, was noch verfügbar ist."],
     ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein.", "korrigieren"],
     ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen.", "uebersicht"],
@@ -2198,21 +2221,31 @@ body.is-locked .wrap { visibility: hidden; }
     ["💶", "Lohn & Einkommen", "income", "gehalt hauptjob minijob lohntag kindergeld wohngeld unterhalt einnahme", "Unter „Mehr“ trägst du Hauptjob, Minijob und deinen Lohntag ein. Mit „+ Weitere feste Einnahme“ kommen z. B. Kindergeld oder Wohngeld dazu, die jeden Monat gleich sind. Den Lohntag braucht die App für die Tage bis zum Lohn, den Kalender und den nächsten Monat."],
     ["⚠️", "Warnungen", "settings", "warnung grenze knapp", "Unter „Warnungen & Sperre“ stellst du ein, ab welchem Betrag die App dich warnt."],
     ["🔒", "PIN und Face ID", "settings", "sperre pin face id passkey sicher", "Unter „Warnungen & Sperre“ schaltest du die App-Sperre ein. Beim Öffnen startet Face ID automatisch. Lädst du die Seite neu, fragt sie nicht noch mal.", "sperre"],
-    ["⏸", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
+    ["💤", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
     ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie.", "siri"],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
-    ["↻", "Neu laden und Abmelden", "", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Daneben kannst du dich abmelden."],
+    ["↻", "Neu laden und Abmelden", "more", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Abmelden kannst du ganz unten bei „Mehr“."],
   ];
+  const HELP_GROUPS = [["Übersicht", ["home"]], ["Einträge", ["entries"]], ["Lohn", ["income"]], ["Fixkosten & Kalender", ["costs", "cal"]],
+    ["Planen &amp; auswerten", ["stats", "debts", "bank", "whatif"]], ["Einstellungen", ["settings", "backup", "siri", "more", ""]]];
   function renderHelp() {
     const q = $("helpQ").value.trim().toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
     const hits = HELP.filter(h => words.every(w => (h[1] + " " + h[3] + " " + h[4]).toLowerCase().includes(w)));
-    $("helpList").innerHTML = hits.length
-      ? hits.map(([ico, title, go, , text, vid]) => `<details class="help-item"${words.length && hits.length <= 3 ? " open" : ""}><summary><span aria-hidden="true">${ico}</span>${esc(title)}${vid ? `<span class="help-vid" aria-label="mit Video">▶</span>` : ""}</summary><p>${esc(text)}</p>`
-        + `<div class="help-acts">${vid ? `<button class="btn small" type="button" data-video="${vid}">▶ Video ansehen</button>` : ""}${go ? `<button class="linklike" type="button" data-go="${go}">Hinbringen ›</button>` : ""}</div></details>`).join("")
-      : `<div class="empty"><strong>Nichts gefunden</strong>Versuch ein anderes Wort, zum Beispiel „Lohn“, „PayPal“ oder „Konto“.</div>`;
+    const item = ([ico, title, go, , text, vid]) => `<details class="help-item"${words.length && hits.length <= 3 ? " open" : ""}><summary><span aria-hidden="true">${ico}</span>${esc(title)}${vid ? `<span class="help-vid" aria-label="mit Video">▶</span>` : ""}</summary><p>${esc(text)}</p>`
+        + `<div class="help-acts">${vid ? `<button class="btn small" type="button" data-video="${vid}">▶ Video ansehen</button>` : ""}${go ? `<button class="linklike" type="button" data-go="${go}">Hinbringen ›</button>` : ""}</div></details>`;
+    // without a search the list is split by topic; a search shows the hits in one list
+    const groups = HELP_GROUPS.map(([label, pages]) => [label, hits.filter(h => pages.includes(h[2]))]).filter(([, l]) => l.length);
+    $("helpList").innerHTML = !hits.length ? `<div class="empty"><strong>Nichts gefunden</strong>Versuch ein anderes Wort, zum Beispiel „Lohn“, „PayPal“ oder „Konto“.</div>`
+      : words.length ? hits.map(item).join("") : groups.map(([label, l]) => `<span class="menu-h">${label}</span>${l.map(item).join("")}`).join("");
   }
   $("helpQ").addEventListener("input", renderHelp);
+  // "Auswertung": this month, the year or the history, one at a time
+  document.querySelector(".sv-pick").addEventListener("click", e => {
+    const b = e.target.closest("[data-sv]"); if (!b) return;
+    document.querySelectorAll("[data-sv]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
+    document.querySelectorAll("[data-sv-show]").forEach(sec => sec.toggleAttribute("data-sv-off", sec.dataset.svShow !== b.dataset.sv));
+  });
   // explainer clips are recorded with made-up demo data; loaded only when tapped.
   // The clips have no sound track: the captions are read aloud with the phone's own German voice.
   const speech = "speechSynthesis" in window ? speechSynthesis : null;
