@@ -443,6 +443,10 @@ th, td { border-bottom-color: var(--line); }
 .nm-due-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nm-due-row small { color: var(--muted); font-size: .74rem; }
 .nm-due-row .num { white-space: nowrap; }
+.soon-card { background: var(--surface); border-radius: 18px; padding: 12px 16px; display: grid; gap: 6px; }
+.soon-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: .8rem; color: var(--muted); }
+.soon-head b { color: var(--ink); font-size: .9rem; font-weight: 600; white-space: nowrap; }
+.soon-card .linklike { justify-self: start; font-size: .8rem; }
 .nm-body { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
 .nm-row { display: flex; justify-content: space-between; gap: 10px; }
 .nm-row.sum { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 700; }
@@ -565,6 +569,7 @@ body.is-locked .wrap { visibility: hidden; }
     </div>
     <div class="perday" id="perDay"></div>
     <div class="ring-keys" id="legend"></div>
+    <div class="soon" id="soonBox" hidden></div>
     <div class="home-cards" id="homeCards"></div>
     <div class="today" id="today"></div>
     <div class="next-month" id="nextMonth"></div>
@@ -1127,6 +1132,23 @@ body.is-locked .wrap { visibility: hidden; }
     renderHistory();
   }
 
+  // the items behind the small line in the ring: reserved money and pay-later debits before the next wage
+  function renderSoon(due) {
+    const end = isoDay(periodWindow().end), cut = resCut();
+    const list = [...state.expenses.filter(e => isLater(e) && e.payOn < end).map(e => ({ ico: "⏳", name: e.name, date: e.payOn, amount: e.amount })),
+      ...state.reserved.filter(r => !r.date || r.date < cut).map(r => ({ ico: "📌", name: r.name, date: r.date || "", amount: r.amount }))]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    $("soonBox").hidden = !list.length;
+    if (!list.length) { $("soonBox").innerHTML = ""; return; }
+    const kinds = new Set(list.map(x => x.ico));
+    const title = kinds.size > 1 ? "Vorgemerkt &amp; später bezahlen" : kinds.has("📌") ? "Vorgemerkt bis zum Lohn" : "Später bezahlen bis zum Lohn";
+    const shown = list.slice(0, 4);
+    $("soonBox").innerHTML = `<div class="soon-card">
+      <div class="soon-head"><span>${title}</span><b class="num">− ${fmt(due)}</b></div>
+      ${shown.map(x => `<div class="nm-due-row"><span aria-hidden="true">${x.ico}</span><span class="nm-due-name">${esc(x.name)} <small>${x.date ? fmtDate(x.date) : "ohne Datum"}</small></span><span class="num">− ${fmt(x.amount)}</span></div>`).join("")}
+      ${list.length > shown.length ? `<button class="linklike" type="button" data-go="entries">und ${list.length - shown.length} weitere ansehen ›</button>` : ""}
+    </div>`;
+  }
   function renderHero(t) {
     $("avail").textContent = fmt(t.avail);
     $("avail").classList.toggle("neg", t.avail < 0);
@@ -1135,6 +1157,7 @@ body.is-locked .wrap { visibility: hidden; }
     const what = later && t.reserved ? "„später bezahlen“/vorgemerkt" : later ? "„später bezahlen“" : "vorgemerkt";
     $("afterLater").hidden = !due;
     if (due) $("afterLater").innerHTML = `nach ${what} voraussichtlich<b class="${t.avail - due < 0 ? "minus" : ""}">${fmt(t.avail - due)}</b>noch zur Verfügung`;
+    renderSoon(due);
     $("eqIncome").textContent = fmt(t.income);
     $("eqCosts").textContent = "− " + fmt(t.costs);
     $("eqRest").textContent = fmt(t.rest);
@@ -1194,11 +1217,13 @@ body.is-locked .wrap { visibility: hidden; }
   const extraIn = () => sum(active().filter(e => e.kind === "in" && e.cat !== CARRY_CAT), e => e.amount);
   const everyday = h => h.byCat ? sum(Object.entries(h.byCat).filter(([k]) => k !== CARRY_CAT), ([, v]) => v) : h.spent;
 
+  // what is left once reserved money and pay-later debits before the next wage are taken off (the small line in the ring)
+  const afterPlanned = t => t.avail - laterDueNow() - t.reserved;
   function dayBudget(t) {
     if (!state.payday || !t.income) return null;
     const p = upcomingPay();
     const spentToday = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) === today()), e => e.amount);
-    const budget = Math.max(t.avail + spentToday, 0) / Math.max(p.days, 1);
+    const budget = Math.max(afterPlanned(t) + spentToday, 0) / Math.max(p.days, 1);
     return { budget, left: budget - spentToday, spentToday };
   }
 
@@ -1210,7 +1235,7 @@ body.is-locked .wrap { visibility: hidden; }
     if (daysGone < 3) return { early: true };
     const spent = sum(active().filter(e => e.kind !== "in" && e.cat !== CARRY_CAT && payDay(e) >= start && payDay(e) <= today()), e => e.amount);
     const perDay = spent / daysGone, days = upcomingPay().days;
-    return { perDay, days, left: t.avail - perDay * days };
+    return { perDay, days, left: afterPlanned(t) - perDay * days };
   }
 
   // warnings the person asked for: below their own limit, or over today's budget
@@ -1552,7 +1577,7 @@ body.is-locked .wrap { visibility: hidden; }
     const avg = `im Schnitt ${fmt(f.perDay)} am Tag`;
     return f.left >= 0
       ? `<p class="forecast"><span aria-hidden="true">🔮</span> Wenn du so weitermachst wie bisher (${avg}), bleiben dir am Lohntag etwa <b class="num">${fmt(f.left)}</b>.</p>`
-      : `<p class="forecast bad"><span aria-hidden="true">🔮</span> Wenn du so weitermachst wie bisher (${avg}), fehlen dir am Lohntag etwa <b class="num">${fmt(-f.left)}</b>. Versuch, unter ${fmt(Math.max(t.avail, 0) / Math.max(f.days, 1))} am Tag zu bleiben.</p>`;
+      : `<p class="forecast bad"><span aria-hidden="true">🔮</span> Wenn du so weitermachst wie bisher (${avg}), fehlen dir am Lohntag etwa <b class="num">${fmt(-f.left)}</b>. Versuch, unter ${fmt(Math.max(afterPlanned(t), 0) / Math.max(f.days, 1))} am Tag zu bleiben.</p>`;
   }
 
   function renderStats(t) {
@@ -2130,10 +2155,11 @@ body.is-locked .wrap { visibility: hidden; }
   // --- help center: every feature explained, with a search ---
   const HELP = [
     ["🟢", "Kreis „Noch verfügbar“", "home", "übersicht ring betrag rest geld frei rechnung", "Zeigt, wie viel Geld du bis zum nächsten Lohn noch hast: Lohn minus Fixkosten minus Ausgaben plus Einzahlungen. Grau sind die Fixkosten, Orange deine Ausgaben, Grün das, was noch frei ist. Unter „So wird gerechnet“ siehst du die genaue Rechnung.", "uebersicht"],
-    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich.", "spaeter"],
+    ["📌", "Kleine Zeile unter dem Kreis", "home", "voraussichtlich später bezahlen vorgemerkt", "Wird in diesem Monat noch etwas mit „später bezahlen“ abgebucht oder hast du Geld vorgemerkt, steht klein unter dem Kreis, wie viel danach voraussichtlich noch übrig ist. Der große Betrag bleibt gleich. Darunter zeigt eine kleine Liste, was genau vorgemerkt ist oder noch abgebucht wird.", "spaeter"],
+    ["☀️", "Heute kannst du noch ausgeben", "home", "tagesbudget pro tag heute ausgeben", "Das Geld nach Vorgemerktem und „später bezahlen“ (die kleine Zahl im Kreis), geteilt durch die Tage bis zum Lohn. So bleibt das schon verplante Geld übrig."],
     ["✏️", "Betrag korrigieren", "home", "stimmt nicht falsch minus ändern korrektur", "Stimmt der Betrag nicht? Tipp in der Übersicht auf „Betrag stimmt nicht? Korrigieren“ und gib den richtigen Betrag ein, auch ein Minus. Die App trägt den Unterschied als Korrektur ein.", "korrigieren"],
     ["🔮", "Nächster Monat", "home", "vorschau nächster lohn monat", "Die Karte in der Übersicht zeigt, was dir nach dem nächsten Lohn voraussichtlich bleibt: Lohn minus Fixkosten, plus oder minus was jetzt übrig ist, minus „später bezahlen“, das dann abgebucht wird. Tipp drauf, um die Rechnung zu sehen.", "uebersicht"],
-    ["🔮", "Prognose bis zum Lohn", "home", "prognose vorhersage weitermachen lohntag ende monat schnitt", "In der Karte „Heute kannst du noch ausgeben“ steht unten, wie viel dir am Lohntag voraussichtlich bleibt, wenn du so weiter ausgibst wie seit dem letzten Lohn (Durchschnitt pro Tag). Fixkosten sind schon abgezogen. Ab dem 3. Tag nach dem Lohn wird es angezeigt."],
+    ["🔮", "Prognose bis zum Lohn", "home", "prognose vorhersage weitermachen lohntag ende monat schnitt", "In der Karte „Heute kannst du noch ausgeben“ steht unten, wie viel dir am Lohntag voraussichtlich bleibt, wenn du so weiter ausgibst wie seit dem letzten Lohn (Durchschnitt pro Tag). Fixkosten, Vorgemerktes und „später bezahlen“ bis zum Lohn sind schon abgezogen. Ab dem 3. Tag nach dem Lohn wird es angezeigt."],
     ["🗂️", "Karten in der Übersicht", "home", "hinweise erinnerung karte", "Kleine Karten erinnern dich an Wichtiges, zum Beispiel: Lohn ist da, Vertrag läuft aus, Wochenrückblick, Spar-Tipp oder Schulden. Tipp drauf, dann kommst du direkt hin.", "uebersicht"],
     ["➖", "Ausgabe eintragen", "entries", "ausgeben einkaufen tanken abziehen kaufen", "Im Tab „Einträge“ auf „− Ausgabe“ tippen. Betrag, wofür, Kategorie und Datum eintragen und auf „Abziehen“ tippen.", "ausgabe"],
     ["➕", "Einzahlung eintragen", "entries", "geld bekommen geschenk rückzahlung plus", "Geld, das zusätzlich reinkommt, trägst du unter „Einträge“ mit „+ Einzahlung“ ein. Es wird zum Verfügbaren dazugezählt.", "einzahlung"],
