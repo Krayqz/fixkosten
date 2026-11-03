@@ -23,3 +23,22 @@ create policy "eigene Daten ändern" on public.budgets
 
 revoke all on public.budgets from anon;
 grant select, insert, update on public.budgets to authenticated;
+
+-- "Konto löschen" in der App: jede Person kann nur ihr eigenes Konto löschen.
+-- Die Zeile in budgets wird dabei automatisch mitgelöscht (on delete cascade).
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'nicht angemeldet';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

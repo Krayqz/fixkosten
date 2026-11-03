@@ -483,6 +483,12 @@ th, td { border-bottom-color: var(--line); }
 #loanChips .pause-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .calc-res:empty { display: none; }
 .pw-form .btn { justify-self: start; }
+.del-box { margin-top: 18px; }
+.del-box .del-open { justify-self: start; color: var(--bad); }
+.del-form { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.del-form .btn.small { justify-self: start; }
+.del-form .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.del-warn { margin: 0; color: var(--bad); font-size: .88rem; font-weight: 600; }
 .nm-body { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
 .nm-row { display: flex; justify-content: space-between; gap: 10px; }
 .nm-row.sum { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 700; }
@@ -742,7 +748,7 @@ body.is-locked .wrap { visibility: hidden; }
       <div class="menu">
         <button type="button" data-go="income"><span class="m-ico" aria-hidden="true">💶</span><span>Lohn &amp; Einkommen<small id="menuIncome">Hauptjob, Minijob, Lohntag</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="settings"><span class="m-ico" aria-hidden="true">🔒</span><span>Warnungen &amp; Sperre<small>Warnungen, PIN, Face ID</small></span><b aria-hidden="true">›</b></button>
-        <button type="button" data-go="account"><span class="m-ico" aria-hidden="true">🔑</span><span>Konto &amp; Passwort<small>Passwort ändern</small></span><b aria-hidden="true">›</b></button>
+        <button type="button" data-go="account"><span class="m-ico" aria-hidden="true">🔑</span><span>Konto &amp; Passwort<small>Passwort ändern, Konto löschen</small></span><b aria-hidden="true">›</b></button>
         <button type="button" data-go="backup"><span class="m-ico" aria-hidden="true">💾</span><span>Daten sichern<small>Sicherung herunterladen oder laden</small></span><b aria-hidden="true">›</b></button>
       </div>
       <span class="menu-h">Hilfe</span>
@@ -1021,6 +1027,19 @@ body.is-locked .wrap { visibility: hidden; }
         <p class="auth-msg" id="pwMsg" role="status"></p>
       </form>
       <p class="hint">Aktuelles Passwort vergessen? Melde dich ganz unten bei „Mehr“ ab und tipp beim Anmelden auf „Passwort vergessen?“.</p>
+      <div class="box del-box">
+        <strong>Konto löschen</strong>
+        <p class="hint">Löscht dein Konto und alle deine Daten endgültig: Fixkosten, Einträge, Verlauf, Kredite und Einstellungen.</p>
+        <button class="btn ghost del-open" type="button" id="delOpen">Konto löschen …</button>
+        <form class="del-form" id="delForm" novalidate hidden>
+          <p class="del-warn">⚠️ Das kann man nicht rückgängig machen. Deine Daten lassen sich danach nicht wiederherstellen.</p>
+          <button class="btn ghost small" type="button" data-go="backup">💾 Vorher Sicherung herunterladen</button>
+          <div class="field"><label for="delPw">Zur Sicherheit: dein Passwort</label><input type="password" id="delPw" autocomplete="current-password"></div>
+          <label class="check"><input type="checkbox" id="delSure"><span>Ich verstehe, dass danach alles weg ist.</span></label>
+          <div class="row-btns"><button class="btn danger" type="submit" id="delBtn">Endgültig löschen</button><button class="btn ghost" type="button" id="delCancel">Abbrechen</button></div>
+          <p class="auth-msg" id="delMsg" role="status"></p>
+        </form>
+      </div>
     </section>
   </div>
   <nav class="tabbar" id="tabbar" aria-label="Bereiche">
@@ -2542,6 +2561,7 @@ body.is-locked .wrap { visibility: hidden; }
     ["💤", "Fixkosten pausieren", "costs", "pause pausieren ruhen aussetzen fitnessstudio gym", "Bei „Fixkosten“ auf ✎ tippen und „Pausieren bis“ wählen (1, 2 oder 3 Monate oder ein Datum). Bis dahin wird nichts abgezogen, danach läuft es automatisch weiter. Mit „Pause beenden“ geht es sofort wieder los.", "pausieren"],
     ["🎙️", "Siri: Ausgabe per Sprache", "siri", "siri sprache kurzbefehl shortcut sprechen hey siri", "Unter „Mehr“ → „Siri & Kurzbefehl“ richtest du einmal einen Kurzbefehl ein. Danach sagst du „Hey Siri, Ausgabe eintragen“ und z. B. „12,50 Döner“. Die App trägt es ein und rät die Kategorie.", "siri"],
     ["🔑", "Passwort ändern", "account", "passwort kennwort ändern neu sicherheit konto login anmelden email", "Unter „Mehr“ → „Konto & Passwort“ gibst du dein aktuelles Passwort und zweimal das neue ein (mindestens 8 Zeichen). Aktuelles Passwort vergessen? Dann abmelden und beim Anmelden auf „Passwort vergessen?“ tippen.", "passwort"],
+    ["🗑️", "Konto löschen", "account", "konto löschen account entfernen abmelden daten weg kündigen", "Unter „Mehr“ → „Konto & Passwort“ ganz unten auf „Konto löschen …“ tippen, Passwort eingeben, den Haken setzen und „Endgültig löschen“ tippen. Dann sind dein Konto und alle Daten weg. Lade vorher bei „Daten sichern“ eine Sicherung herunter, falls du sie noch brauchst."],
     ["💾", "Daten sichern", "backup", "backup sicherung datei export", "Unter „Mehr“ → „Daten sichern“ lädst du eine Sicherung herunter oder spielst eine wieder ein."],
     ["↻", "Neu laden und Abmelden", "more", "aktualisieren update neu laden abmelden ausloggen", "Oben rechts lädt ↻ die neueste Version der App. Abmelden kannst du ganz unten bei „Mehr“."],
   ];
@@ -2998,6 +3018,34 @@ body.is-locked .wrap { visibility: hidden; }
       pwMsg("✅ Passwort geändert. Ab jetzt meldest du dich mit dem neuen an.", "ok");
     } catch (err) { pwMsg(/aktuelle Passwort/.test(err.message) ? err.message : authError(err), "err"); }
     finally { $("pwBtn").disabled = false; }
+  });
+
+  // delete the account for good: the SQL function delete_my_account (supabase.sql) removes the login,
+  // and the budgets row goes with it (on delete cascade). The password is checked first, like above.
+  const delMsg = (text, kind = "") => { $("delMsg").textContent = text; $("delMsg").className = "auth-msg " + kind; };
+  const delReset = () => { $("delForm").hidden = true; $("delOpen").hidden = false; $("delPw").value = ""; $("delSure").checked = false; delMsg(""); };
+  $("delOpen").addEventListener("click", () => { $("delForm").hidden = false; $("delOpen").hidden = true; $("delPw").focus(); });
+  $("delCancel").addEventListener("click", delReset);
+  $("delForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!$("delPw").value) { delMsg("Gib zuerst dein Passwort ein.", "err"); $("delPw").focus(); return; }
+    if (!$("delSure").checked) { delMsg("Setz zuerst den Haken, dass du verstehst, dass danach alles weg ist.", "err"); return; }
+    if (!user?.email) return;
+    $("delBtn").disabled = true; delMsg("Einen Moment …");
+    try {
+      const check = await sb.auth.signInWithPassword({ email: user.email, password: $("delPw").value });
+      if (check.error) throw /invalid login credentials/i.test(check.error.message) ? new Error("Das Passwort stimmt nicht.") : check.error;
+      const { error } = await sb.rpc("delete_my_account");
+      if (error) throw /PGRST202|42883|could not find the function|does not exist/i.test(`${error.code} ${error.message}`) ? new Error("Das Löschen ist noch nicht eingerichtet. Es wurde nichts gelöscht.") : error;
+      const id = user.id;
+      clearTimeout(saveTimer); clearTimeout(retryTimer); saveTimer = null; unsaved = false;
+      try { [CACHE_KEY, PENDING_KEY, LOCK_KEY].forEach(k => localStorage.removeItem(k + id)); } catch {}
+      delReset();
+      await sb.auth.signOut({ scope: "local" }).catch(() => {});
+      setUser(null);
+      authMsg("Dein Konto und alle Daten sind gelöscht.", "ok");
+    } catch (err) { delMsg(/Passwort stimmt|eingerichtet/.test(err.message) ? err.message : authError(err), "err"); }
+    finally { $("delBtn").disabled = false; }
   });
 
   $("logoutBtn").addEventListener("click", async () => {
